@@ -34,6 +34,7 @@ def _krt_cohort() -> pd.DataFrame:
             "ethnicity": ["White", "White", "Asian", "White", "Missing", "White"],
             "sex": ["Male", "Female", "Male", "Male", "Female", "Male"],
             "dialtplt": ["HD", "PD", "TX", "HD", "HHD", "HD"],
+            "assessmentoutcome": [None, None, None, None, None, None],
         }
     )
 
@@ -181,6 +182,7 @@ def test_krt_generate_cohort_report_matches_extract_shape():
         "ethnicity",
         "sex",
         "dialtplt",
+        "assessmentoutcome",
     }
 
 
@@ -212,6 +214,7 @@ def test_ckd_calculator_extract_stats():
             "age": ["55-74", "35-54", "75+"],
             "ethnicity": ["White", "White", "Black"],
             "sex": ["Male", "Female", "Male"],
+            "assessmentoutcome": [None, None, None],
         }
     )
 

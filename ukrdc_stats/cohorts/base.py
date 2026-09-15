@@ -15,7 +15,6 @@ from ukrdc_stats.utils.data import GENDER_GROUP_MAP
 from ukrdc_stats.validation.validate import validate_centre
 from ukrdc_stats.exceptions import MissingColumnError
 
-import numpy as np
 import datetime as dt
 import pandera.pandas as pa
 import pandas as pd
@@ -105,55 +104,21 @@ def _chain_treatments(base_cohort, recovery_window: dt.timedelta):
     base_cohort["prev_fromtime"] = base_cohort.groupby("ukrdcid")["fromtime"].shift(1)
     base_cohort["prev_totime"] = base_cohort.groupby("ukrdcid")["totime"].shift(1)
 
-    # Allen's 7 interval relationships with the recovery window absorbed into
-    # the defintions of "before" and "overlaps" i.e a record overlaps if it is
-    # within the recovery window of the previous record
-    conditions = [
-        # Before: previous (including recovery window) end is before current start
-        base_cohort["prev_totime"] + recovery_window < base_cohort["fromtime"],
-        # Short recovery: not in allen this is necessitated by the recovery window
-        # being applied to the "before" condition
-        (base_cohort["prev_totime"] + recovery_window >= base_cohort["fromtime"])
-        & (base_cohort["prev_totime"] < base_cohort["fromtime"]),
-        # Meets: previous end equals current start
-        (base_cohort["prev_totime"] == base_cohort["fromtime"])
-        & (base_cohort["prev_fromtime"] != base_cohort["fromtime"]),
-        # Overlaps: previous starts before current, current starts before previous extended end, previous extended end before current end
-        (base_cohort["prev_fromtime"] < base_cohort["fromtime"])
-        & (base_cohort["prev_totime"] > base_cohort["fromtime"]),
-        # Starts: same start, previous ends before current
-        (base_cohort["prev_fromtime"] == base_cohort["fromtime"])
-        & (base_cohort["prev_totime"] < base_cohort["totime"]),
-        # Contains: current starts after previous, previous ends after current
-        # (base_cohort['prev_fromtime'] < base_cohort['fromtime']) &
-        # (base_cohort['totime'] < base_cohort['prev_totime']),
-        # During: inverse of contains
-        (base_cohort["prev_fromtime"] < base_cohort["fromtime"])
-        & (base_cohort["totime"] < base_cohort["prev_totime"]),
-        # Finishes: previous starts after current, same end
-        # (base_cohort['prev_fromtime'] > base_cohort['fromtime']) &
-        # (base_cohort['prev_totime'] == base_cohort['totime']),
-        # Finished by: inverse of above
-        (base_cohort["prev_fromtime"] < base_cohort["fromtime"])
-        & (base_cohort["prev_totime"] == base_cohort["totime"]),
-        # Equals: same start and end
-        (base_cohort["prev_fromtime"] == base_cohort["fromtime"])
-        & (base_cohort["prev_totime"] == base_cohort["totime"]),
-    ]
-
-    choices = [
-        "before",
-        "short recovery",
-        "meets",
-        "overlaps",
-        "starts",
-        "during",
-        "finished by",
-        "equals",
-    ]
-    base_cohort["prev_treatment_relationship"] = np.select(
-        conditions, choices, default=None
+    # Running max of all prior totimes: a record only starts a new timeline if
+    # it is gapped from everything before it, not just its neighbour. This
+    # catches records contained by an earlier, longer record (e.g. A contains
+    # B and C with a gap between B and C).
+    base_cohort["prev_max_totime"] = base_cohort.groupby("ukrdcid")[
+        "totime"
+    ].transform(lambda s: s.cummax().shift(1))
+    base_cohort["new_timeline"] = base_cohort["prev_max_totime"].isna() | (
+        base_cohort["prev_max_totime"] + recovery_window < base_cohort["fromtime"]
     )
+
+    # Equality check for duplicate records (same start and end as neighbour)
+    base_cohort["is_equal"] = (
+        base_cohort["prev_fromtime"] == base_cohort["fromtime"]
+    ) & (base_cohort["prev_totime"] == base_cohort["totime"])
 
     return base_cohort
 
@@ -201,17 +166,13 @@ def _clean_equal_records(base_cohort: pd.DataFrame) -> pd.DataFrame:
         pd.DataFrame: Cleaned base cohort dataframe
     """
 
-    if "prev_treatment_relationship" not in base_cohort.columns:
-        raise MissingColumnError(
-            "prev_treatment_relationship column not found in base_cohort"
-        )
-
-    # base_cohort.to_csv("equal_records_debug.csv", index=False)
+    if "is_equal" not in base_cohort.columns:
+        raise MissingColumnError("is_equal column not found in base_cohort")
 
     # Rule 1: where equal records of same modality are present in different
     # centres merge records. This for cases where multiple centres fill in
     # treatment timeline
-    equal_records = base_cohort[base_cohort["prev_treatment_relationship"] == "equals"]
+    equal_records = base_cohort[base_cohort["is_equal"]]
     for record in equal_records.itertuples():
         # earlier iterations may already have dropped this record or its predecessor
         if record.Index not in base_cohort.index:
@@ -238,10 +199,7 @@ def _clean_equal_records(base_cohort: pd.DataFrame) -> pd.DataFrame:
                 # Keep the previous record and remove the current one
                 base_cohort = base_cohort.drop(record.Index)
             elif curr_matches and not prev_matches:
-                # recode relationship and drop previous record
-                base_cohort.loc[record.Index, "prev_treatment_relationship"] = (
-                    prev_record.prev_treatment_relationship
-                )
+                # drop previous record, keep current
                 base_cohort = base_cohort.drop(prev_record.Index)
 
     return base_cohort
@@ -258,25 +216,23 @@ def _label_timeline(krt_incident_cohort: pd.DataFrame) -> pd.DataFrame:
         pd.DataFrame: KRT incident cohort dataframe with treatment labels
     """
 
-    if "prev_treatment_relationship" not in krt_incident_cohort.columns:
-        raise MissingColumnError(
-            "prev_treatment_relationship column not found in krt_incident_cohort"
-        )
+    if "new_timeline" not in krt_incident_cohort.columns:
+        raise MissingColumnError("new_timeline column not found in krt_incident_cohort")
 
     timeline_start = (
-        krt_incident_cohort[
-            (krt_incident_cohort["prev_treatment_relationship"] == "before")
-            | krt_incident_cohort["prev_treatment_relationship"].isna()
-        ][["ukrdcid", "fromtime"]]
+        krt_incident_cohort[krt_incident_cohort["new_timeline"]][
+            ["ukrdcid", "fromtime"]
+        ]
         .sort_values("fromtime", ascending=False)
         .drop_duplicates("ukrdcid", keep="first")
     )
     timeline_start.rename(columns={"fromtime": "timeline_start"}, inplace=True)
 
-    timeline_stop = krt_incident_cohort[["ukrdcid", "totime"]].drop_duplicates(
-        "ukrdcid", keep="last"
+    timeline_stop = (
+        krt_incident_cohort.groupby("ukrdcid", as_index=False)["totime"]
+        .max()
+        .rename(columns={"totime": "timeline_stop"})
     )
-    timeline_stop.rename(columns={"totime": "timeline_stop"}, inplace=True)
 
     timeline = timeline_start.merge(timeline_stop, on="ukrdcid", how="inner")
     timeline["timeline_length"] = timeline["timeline_stop"] - timeline["timeline_start"]
@@ -336,20 +292,23 @@ def _label_incident(
     """
 
     # anyone who receives a transplant at any point is coded as chronic as long
-    #  as it doesn't fail within 14 days. This many not be precise enough
+    #  as it doesn't fail within 14 days. At this point there shouldn't be any 
+    # patients with historic transplants
     group1_ids = krt_new_cohort[
         (krt_new_cohort.dialtplt == "TX")
         & ((krt_new_cohort.totime - krt_new_cohort.fromtime) > dt.timedelta(days=14))
     ].ukrdcid.unique()
 
     # code as chronic if on dialysis for greater than 90 days starting on dialysis
+    # removed condition for modality to be dialysis to include failed transplants
     group2_ids = krt_new_cohort[
         (krt_new_cohort.timeline_length > recovery_window)
-        & (krt_new_cohort.fromtime == krt_new_cohort.timeline_start)
-        & krt_new_cohort.dialtplt.isin(["PD", "HD"])
+        #& (krt_new_cohort.fromtime == krt_new_cohort.timeline_start)
+        #& krt_new_cohort.dialtplt.isin(["PD", "HD"])
     ].ukrdcid.unique()
 
-    # patients with ckd centre who die within 90 days we may need to verify with egfr
+    # patients with ckd centre who die within 90 days, and modality which is not accute
+    # we may need to verify with egfr.
     group3_ids = krt_new_cohort[
         (krt_new_cohort.timeline_length < recovery_window)
         & (krt_new_cohort.length_of_life < recovery_window)
@@ -359,6 +318,7 @@ def _label_incident(
 
     # Patients who's last treatment is a transfer out of type that implies they remain on treatment
     # TODO: include 85, 86? condition on length of life?
+    # Exclude patients within this group with transfer in code?
     group4_ids = krt_new_cohort[
         (krt_new_cohort.timeline_stop == krt_new_cohort.totime)
         & (krt_new_cohort.timeline_length < recovery_window)
