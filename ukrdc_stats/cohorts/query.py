@@ -126,15 +126,14 @@ def query_krt_incident(
     """
 
     minimum_transplant_length = 7
-    day = dt.timedelta(days=1)
 
-    ChronicTreatment = aliased(Treatment)  # pylint: disable=C0103
-    ChronicModality = aliased(ModalityCodes)  # pylint: disable=C0103
-    HistoricTransplantTreatment = aliased(Treatment)  # pylint: disable=C0103
-    TransplantModality = aliased(ModalityCodes)  # pylint: disable=C0103
+    ChronicTreatment = aliased(Treatment)
+    ChronicModality = aliased(ModalityCodes)
+    HistoricTransplantTreatment = aliased(Treatment)
+    TransplantModality = aliased(ModalityCodes)
     SubPatientRecord = aliased(PatientRecord)
 
-    # Select ukrdcids of patients treated at centre or it's satellites
+    # ukrdcids of patients treated at centre or its satellites
     ukrdc_sub = (
         select(PatientRecord.ukrdcid)
         .select_from(PatientRecord)
@@ -157,9 +156,33 @@ def query_krt_incident(
         )
     )
 
-    # debug_ukrdc_sub = session.execute(ukrdc_sub).all()
+    # ukrdcids with KRT treatment in the washout period — these are excluded
+    washout_sub = (
+        select(PatientRecord.ukrdcid)
+        .select_from(PatientRecord)
+        .join(Treatment, PatientRecord.pid == Treatment.pid)
+        .join(ModalityCodes, ModalityCodes.registry_code == Treatment.admitreasoncode)
+        .where(
+            ModalityCodes.registry_code_type.in_(["HD", "PD", "TX"]),
+            Treatment.fromtime >= (start - recovery_window),
+            Treatment.fromtime < start,
+        )
+    )
 
-    # select most recent record of CKD clinic
+    # ukrdcids with at least one KRT treatment in the incident window
+    incident_sub = (
+        select(PatientRecord.ukrdcid)
+        .select_from(PatientRecord)
+        .join(Treatment, PatientRecord.pid == Treatment.pid)
+        .join(ModalityCodes, ModalityCodes.registry_code == Treatment.admitreasoncode)
+        .where(
+            ModalityCodes.registry_code_type.in_(["HD", "PD", "TX"]),
+            Treatment.fromtime >= start,
+            Treatment.fromtime <= end,
+        )
+    )
+
+    # most recent CKD clinic record per patient (informational)
     ckd_ranked = (
         select(
             ChronicTreatment.pid.label("pid"),
@@ -186,19 +209,20 @@ def query_krt_incident(
         select(ckd_ranked.c.pid, ckd_ranked.c.ckd_centre).where(ckd_ranked.c.rn == 1)
     ).subquery("ckd_latest")
 
-    # check if there is any record of transplant
+    # check for historic transplant before the incident window
     # NOTE: this should probably include nhsbt feeds
     tx_check = exists().where(
         HistoricTransplantTreatment.pid == SubPatientRecord.pid,
         SubPatientRecord.ukrdcid == PatientRecord.ukrdcid,
-        HistoricTransplantTreatment.fromtime < start,  # Before start of time window
+        HistoricTransplantTreatment.fromtime < start,
         HistoricTransplantTreatment.totime - HistoricTransplantTreatment.fromtime
-        > dt.timedelta(days=minimum_transplant_length),  # Successful transplant
+        > dt.timedelta(days=minimum_transplant_length),
         HistoricTransplantTreatment.admitreasoncode == TransplantModality.registry_code,
         TransplantModality.registry_code_type == "TX",
         SubPatientRecord.sendingextract == sending_extract,
     )
 
+    # all KRT treatments for incident patients at this centre
     query = (
         select(
             PatientRecord.pid,
@@ -225,12 +249,8 @@ def query_krt_incident(
             Treatment.fromtime,
             Treatment.totime,
             ckd_latest.c.ckd_centre,
-            # Correlated subquery for historical transplant check
             case(
-                (
-                    tx_check,
-                    True,
-                ),
+                (tx_check, True),
                 else_=False,
             ).label("historic_tx"),
         )
@@ -241,21 +261,13 @@ def query_krt_incident(
         .outerjoin(ckd_latest, ckd_latest.c.pid == PatientRecord.pid)
         .where(
             ModalityCodes.registry_code_type.in_(["HD", "PD", "TX"]),
-            Treatment.fromtime <= (end + recovery_window + day),
-            or_(
-                Treatment.totime > (start - recovery_window + day),
-                Treatment.totime.is_(None),
-            ),
-            or_(Patient.deathtime > start, Patient.deathtime.is_(None)),
             PatientRecord.ukrdcid.in_(ukrdc_sub),
+            ~PatientRecord.ukrdcid.in_(washout_sub),
+            PatientRecord.ukrdcid.in_(incident_sub),
+            or_(Patient.deathtime > start, Patient.deathtime.is_(None)),
             PatientRecord.sendingextract == sending_extract,
         )
     )
-
-    # apply cutoff. Implicitly if calculating for date more recent than
-    # cutoff we allow all fromtimes
-    if (dt.datetime.now() - end) > (recovery_window + day):
-        query = query.where(Treatment.fromtime < (end + recovery_window + day))
 
     data = session.execute(query).all()
 
