@@ -29,7 +29,7 @@ TEMPLATE_PATH: Path = Path("templates/incidence_report_template.xlsx")
 
 CENTRES = [
     # live
-    "RAJ",   # MSE
+    #"RAJ",   # MSE
     "RAQ01", # Lister
     "RCSLB", # Nottingham
     "RH8",   # RD&E

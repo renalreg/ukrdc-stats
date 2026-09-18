@@ -24,12 +24,25 @@ def egfr(
             f"Patient cohort must contain columns: {', '.join(missing_cols)}"
         )
 
-    egfr_data = query_results(
+    # Lab eGFR codes: aggregate to min per pid in SQL to avoid fetching
+    # thousands of raw rows. QBLA1 (creatinine) needs raw rows for per-row
+    # eGFR calculation.
+    lab_egfr_codes = ["QBLAB", "QBLAL", "QBLAP"]
+    lab_egfr_data = query_results(
         session=session,
         pids=patient_cohort["pid"].tolist(),
-        test_codes=["QBLA1", "QBLAB", "QBLAL", "QBLAP"],
+        test_codes=lab_egfr_codes,
         to_time=prevalence_point,
+        mode="min",
     )
+    creatinine_data = query_results(
+        session=session,
+        pids=patient_cohort["pid"].tolist(),
+        test_codes=["QBLA1"],
+        to_time=prevalence_point,
+        mode="max",
+    )
+    egfr_data = pd.concat([lab_egfr_data, creatinine_data], ignore_index=True)
 
     # Clean data
     egfr_data["resultvalue"] = pd.to_numeric(

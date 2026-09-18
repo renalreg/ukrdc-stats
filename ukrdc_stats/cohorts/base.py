@@ -9,9 +9,8 @@ from typing import Optional
 
 from ukrdc_stats.cohorts.query import query_ckd, query_krt_incident, query_krt_prevalent
 from ukrdc_stats.labellers.demographics import age
-from ukrdc_stats.labellers.biomarkers import egfr
 from ukrdc_stats.labellers.geography import adult_paed, main_satellite_centres
-from ukrdc_stats.utils.data import GENDER_GROUP_MAP
+from ukrdc_stats.utils.data import GENDER_GROUP_MAP, egfr as calculate_egfr
 from ukrdc_stats.validation.validate import validate_centre
 from ukrdc_stats.exceptions import MissingColumnError
 
@@ -51,7 +50,34 @@ def ckd_prevalent(
 
     # Label patients
     ukrdc_base_data = age(ukrdc_base_data, prevalence_point)
-    ukrdc_base_data = egfr(session, ukrdc_base_data, prevalence_point)
+
+    # Clean lab eGFR and max creatinine values returned as SQL subqueries
+    for col in ("lab_egfr_min", "max_creatinine"):
+        ukrdc_base_data[col] = pd.to_numeric(
+            ukrdc_base_data[col].astype(str).str.replace(r"[<>]", "", regex=True),
+            errors="coerce",
+        )
+
+    # Calculate eGFR from the max creatinine row for each patient
+    has_crea = ukrdc_base_data["max_creatinine"].notna()
+    if has_crea.any():
+        ukrdc_base_data.loc[has_crea, "calc_egfr"] = ukrdc_base_data[has_crea].apply(
+            lambda row: calculate_egfr(
+                scr=row["max_creatinine"],
+                scr_unit=row["max_creatinine_units"],
+                scr_date=row["max_creatinine_date"],
+                dob=row["birthtime"],
+                sex=row["sex"],
+            ),
+            axis=1,
+        )
+    else:
+        ukrdc_base_data["calc_egfr"] = None
+
+    # Take the minimum of lab eGFR and calculated eGFR
+    ukrdc_base_data["egfr_min"] = ukrdc_base_data[
+        ["lab_egfr_min", "calc_egfr"]
+    ].min(axis=1)
 
     # Error handling for low completeness egfr
     if ukrdc_base_data["egfr_min"].sum() / ukrdc_base_data.shape[0] < 0.1:

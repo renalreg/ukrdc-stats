@@ -117,29 +117,49 @@ def query_results(
     chunk_size: int = 100,
     from_time: Optional[dt.datetime] = None,
     to_time: Optional[dt.datetime] = None,
+    mode: str = "raw",
 ) -> pd.DataFrame:
     """
     Extract test results for a cohort of patients using chunked queries
     to prevent database timeouts.
+
+    Args:
+        mode: "raw" returns all rows. "min" or "max" aggregates to one
+              row per pid per serviceidcode using MIN/MAX(resultvalue),
+              reducing data transfer for large result sets.
     """
     results = []
 
     for i in range(0, len(pids), chunk_size):
         chunk = pids[i : i + chunk_size]
 
-        query = (
-            select(
-                LabOrder.pid,
-                ResultItem.observationtime,
-                ResultItem.serviceidcode,
-                ResultItem.resultvalue,
-                ResultItem.resultvalueunits,
+        if mode in ("min", "max"):
+            agg_func = func.min if mode == "min" else func.max
+            query = (
+                select(
+                    LabOrder.pid,
+                    ResultItem.serviceidcode,
+                    agg_func(ResultItem.resultvalue).label("resultvalue"),
+                    agg_func(ResultItem.resultvalueunits).label("resultvalueunits"),
+                    agg_func(ResultItem.observationtime).label("observationtime"),
+                )
+                .join(ResultItem, ResultItem.orderid == LabOrder.id)
+                .where(LabOrder.pid.in_(chunk))
+                .group_by(LabOrder.pid, ResultItem.serviceidcode)
             )
-            .join(ResultItem, ResultItem.orderid == LabOrder.id)
-            .where(LabOrder.pid.in_(chunk))
-        )
+        else:
+            query = (
+                select(
+                    LabOrder.pid,
+                    ResultItem.observationtime,
+                    ResultItem.serviceidcode,
+                    ResultItem.resultvalue,
+                    ResultItem.resultvalueunits,
+                )
+                .join(ResultItem, ResultItem.orderid == LabOrder.id)
+                .where(LabOrder.pid.in_(chunk))
+            )
 
-        # Filter by specific test codes if provided (e.g. ['CREA', 'EGFR'])
         if test_codes:
             query = query.where(ResultItem.serviceidcode.in_(test_codes))
 
@@ -154,16 +174,16 @@ def query_results(
         if chunk_data:
             results.extend(chunk_data)
 
+    columns = [
+        "pid",
+        "observationtime",
+        "serviceidcode",
+        "resultvalue",
+        "resultvalueunits",
+    ]
+
     if not results:
-        return pd.DataFrame(
-            columns=[
-                "pid",
-                "observationtime",
-                "serviceidcode",
-                "resultvalue",
-                "resultvalueunits",
-            ]
-        )
+        return pd.DataFrame(columns=columns)
 
     return pd.DataFrame(results)
 

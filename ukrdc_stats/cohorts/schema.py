@@ -104,6 +104,10 @@ class ckd_ukrdc_base_schema(pa.DataFrameModel):
     ethnicgroupdesc: Series[str] = pa.Field(nullable=True)
     ukkaethnicity: Series[str] = pa.Field(nullable=True)
     registry_code_type: Series[str]
+    lab_egfr_min: Series[str] = pa.Field(nullable=True)
+    max_creatinine: Series[str] = pa.Field(nullable=True)
+    max_creatinine_units: Series[str] = pa.Field(nullable=True)
+    max_creatinine_date: Series[pa.DateTime] = pa.Field(nullable=True)
 
     class Config:
         coerce = True

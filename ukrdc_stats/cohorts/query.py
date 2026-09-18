@@ -25,6 +25,8 @@ from ukrdc_sqla.ukrdc import (
     ModalityCodes,
     CodeMap,
     FacilityRelationship,
+    LabOrder,
+    ResultItem,
 )
 from ukrdc_sqla.utils.constants import RelationshipType
 from ukrdc_sqla.xmlarchive import (
@@ -327,6 +329,66 @@ def query_ckd_ukrdc(
     # Create an alias for Treatment to join on itself later
     Treatment2 = aliased(Treatment)
 
+    # Correlated subqueries for eGFR data, pushed into SQL to avoid
+    # fetching thousands of ResultItem rows into Python.
+    lab_egfr_sub = (
+        select(func.min(ResultItem.resultvalue))
+        .join(LabOrder, ResultItem.orderid == LabOrder.id)
+        .where(
+            LabOrder.pid == PatientRecord.pid,
+            ResultItem.serviceidcode.in_(["QBLAB", "QBLAL", "QBLAP"]),
+            ResultItem.observationtime <= prevalence_point,
+        )
+        .correlate(PatientRecord)
+        .scalar_subquery()
+        .label("lab_egfr_min")
+    )
+
+    max_crea_val_sub = (
+        select(ResultItem.resultvalue)
+        .join(LabOrder, ResultItem.orderid == LabOrder.id)
+        .where(
+            LabOrder.pid == PatientRecord.pid,
+            ResultItem.serviceidcode == "QBLA1",
+            ResultItem.observationtime <= prevalence_point,
+        )
+        .order_by(ResultItem.resultvalue.desc())
+        .limit(1)
+        .correlate(PatientRecord)
+        .scalar_subquery()
+        .label("max_creatinine")
+    )
+
+    max_crea_units_sub = (
+        select(ResultItem.resultvalueunits)
+        .join(LabOrder, ResultItem.orderid == LabOrder.id)
+        .where(
+            LabOrder.pid == PatientRecord.pid,
+            ResultItem.serviceidcode == "QBLA1",
+            ResultItem.observationtime <= prevalence_point,
+        )
+        .order_by(ResultItem.resultvalue.desc())
+        .limit(1)
+        .correlate(PatientRecord)
+        .scalar_subquery()
+        .label("max_creatinine_units")
+    )
+
+    max_crea_date_sub = (
+        select(ResultItem.observationtime)
+        .join(LabOrder, ResultItem.orderid == LabOrder.id)
+        .where(
+            LabOrder.pid == PatientRecord.pid,
+            ResultItem.serviceidcode == "QBLA1",
+            ResultItem.observationtime <= prevalence_point,
+        )
+        .order_by(ResultItem.resultvalue.desc())
+        .limit(1)
+        .correlate(PatientRecord)
+        .scalar_subquery()
+        .label("max_creatinine_date")
+    )
+
     query_ckd_patients = (
         select(
             PatientRecord.pid,
@@ -347,6 +409,10 @@ def query_ckd_ukrdc(
             Patient.ethnicgroupdesc,
             CodeMap.destination_code.label("ukkaethnicity"),
             ModalityCodes.registry_code_type,
+            lab_egfr_sub,
+            max_crea_val_sub,
+            max_crea_units_sub,
+            max_crea_date_sub,
         )
         .join(Treatment, Treatment.pid == PatientRecord.pid)
         .join(Patient, Patient.pid == PatientRecord.pid)
