@@ -24,7 +24,7 @@ OUTPUT_FILE: Path = Path(f"krt_demog_{SERVER}_{YEAR_START}.csv")
 CENTRES = [
     # live
     "RAJ",   # MSE
-    "RAQ01", # Lister
+    "RAQ01", # Lister (Stevenage)
     "RCSLB", # Nottingham
     "RH8",   # RD&E
     "RHW01", # Reading
@@ -35,13 +35,12 @@ CENTRES = [
     "RBD01", # Dorset
     "RLZ01", # Shrewsbury
     "RP5",   # Doncaster
-    "99RQR13",
-    "RAE05",
-    "RCB55",
-    "RF201",
-    "RQR13",
+    "99RQR13", # Leeds Childrens
+    "RAE05", # St Lukes, Bradford
+    "RCB55", # York
+    "RF201", # Hull
+    "RQR13", # St James
 ]
-
 
 CENTRES = ["RFBAK"]
 
