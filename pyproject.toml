@@ -16,7 +16,7 @@ SQLAlchemy = "^2.0.0"
 pandas = "^2.2.2" 
 pydantic = ">=2.0.0,<3"
 python = "^3.12" 
-ukrdc-sqla = "^4.0.0"
+ukrdc-sqla = ">=5.0.0,<6.0.0"
 psycopg = {version = "^3.2.11", extras = ["binary"]}
 
 [tool.poetry.group.test.dependencies]
