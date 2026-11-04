@@ -20,6 +20,7 @@ from ukrdc_sqla.ukrdc import (
     Treatment,
     ModalityCodes,
 )
+from sqlalchemy.dialects.postgresql import distinct_on
 
 from ukrdc_stats.calculators.abc import AbstractFacilityStatsCalculator
 from ukrdc_stats.utils import _get_satellite_list, aggregate_data
@@ -832,7 +833,7 @@ class KRTStatsCalculator(AbstractFacilityStatsCalculator):
                 ),
             )
             .where(d.qhd20.isnot(None))
-            .distinct(d.pid)
+            .ext(distinct_on(DialysisSession.pid))
             .order_by(d.pid, d.procedure_time.asc())
         )
 
