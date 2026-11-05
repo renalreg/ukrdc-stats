@@ -16,6 +16,7 @@ from ukrdc_sqla.ukrdc import (
     ResultItem,
     Observation,
 )
+from sqlalchemy.dialects.postgresql import distinct_on
 
 from ukrdc_stats.calculators.abc import AbstractFacilityStatsCalculator
 from ukrdc_stats.exceptions import NoCohortError
@@ -116,7 +117,7 @@ class DemographicStatsCalculator(AbstractFacilityStatsCalculator):
             select(
                 PatientRecord.pid, PatientRecord.ukrdcid, PatientRecord.sendingfacility
             )
-            .distinct(PatientRecord.ukrdcid)
+            .ext(distinct_on(PatientRecord.ukrdcid))
             .select_from(PatientRecord)
         )
 
