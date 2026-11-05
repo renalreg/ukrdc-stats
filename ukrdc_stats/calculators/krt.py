@@ -816,7 +816,7 @@ class KRTStatsCalculator(AbstractFacilityStatsCalculator):
                 ).label("end_time"),
             )
             .where(DialysisSession.pid.in_(patient_list))
-            .distinct(DialysisSession.pid)
+            .ext(distinct_on(DialysisSession.pid))
             .order_by(DialysisSession.pid, DialysisSession.procedure_time.asc())
         ).subquery()
 
@@ -868,7 +868,7 @@ class KRTStatsCalculator(AbstractFacilityStatsCalculator):
                 # DialysisSession.procedure_time >= self.time_window[1] - dt.timedelta(days=grace_period),
                 DialysisSession.qhd20.isnot(None),
             )
-            .distinct(DialysisSession.pid)
+            .ext(distinct_on(DialysisSession.pid))
             .order_by(DialysisSession.pid, DialysisSession.procedure_time.desc())
         )
 
