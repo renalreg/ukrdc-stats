@@ -22,6 +22,7 @@ from ukrdc_sqla.xmlarchive import (
     Assessment,
     Treatment as XMLTreatment,
 )
+from sqlalchemy.dialects.postgresql import distinct_on
 
 from ukrdc_stats.calculators.abc import AbstractFacilityStatsCalculator
 from ukrdc_stats.models.generic_2d import BaseTable
@@ -399,7 +400,7 @@ class PrevalentCKDCalculator(AbstractFacilityStatsCalculator):
                 ResultItem.resultvalueunits,
                 ResultItem.observationtime,
             )
-            .distinct(LabOrder.pid, ResultItem.serviceidcode)
+            .ext(distinct_on(LabOrder.pid, ResultItem.serviceidcode))
             .join(LabOrder, LabOrder.id == ResultItem.order_id)
             .where(
                 ResultItem.serviceidcode.in_(["QBLA1", "QBLAB", "QBLAL", "QBLAP"]),

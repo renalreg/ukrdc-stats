@@ -28,6 +28,7 @@ from ukrdc_stats.utils import map_codes, check_headcounts
 from sqlalchemy import select
 from ukrdc_sqla.xmlarchive import Assessment, Patient
 from ukrdc_sqla.ukrdc import PatientNumber, PatientRecord
+from sqlalchemy.dialects.postgresql import distinct_on
 
 
 # Get arguments from command line
@@ -96,10 +97,12 @@ def get_facility_assessments(ukrdc_session, facility):
         PatientNumber.pid,
         PatientNumber.patientid,
         PatientNumber.organization
-    ).distinct(
-        PatientNumber.pid,
-        PatientNumber.patientid,
-        PatientNumber.organization
+    ).ext(
+        distinct_on(
+            PatientNumber.pid,
+            PatientNumber.patientid,
+            PatientNumber.organization
+        )
     ).join(
         PatientRecord, PatientNumber.pid == PatientRecord.pid
     ).where(
