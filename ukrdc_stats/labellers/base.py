@@ -73,13 +73,8 @@ def nhs_number(
     return patient_cohort
 
 
-def nhs_uid(
-    patient_cohort: pd.DataFrame,
-    session: Session
-) -> pd.DataFrame:
-    """
-
-    """
+def nhs_uid(patient_cohort: pd.DataFrame, session: Session) -> pd.DataFrame:
+    """ """
     if "ukrr_uid" in patient_cohort.columns:
         raise ValueError("Cohort already labelled with ukrr uid")
 
@@ -95,7 +90,7 @@ def nhs_uid(
             PatientNumber.patientid.label("ukrr_uid"),
         ).where(
             PatientNumber.pid.in_(chunk),
-            PatientNumber.organization == 'UKRR_UID',
+            PatientNumber.organization == "UKRR_UID",
         )
         rows.extend(session.execute(query).all())
 
@@ -105,9 +100,7 @@ def nhs_uid(
         return patient_cohort
 
     patient_cohort = patient_cohort.merge(
-        pd.DataFrame(rows, columns=["pid", "ukrr_uid"]), 
-        on="pid", 
-        how="left"
+        pd.DataFrame(rows, columns=["pid", "ukrr_uid"]), on="pid", how="left"
     )
 
     return patient_cohort

@@ -262,7 +262,7 @@ def query_careplanning(
         )
         .where(
             XMLPatient.sendingfacility.in_(facility_codes),
-            Assessment.assessmenttypecode.in_(assessment_type)
+            Assessment.assessmenttypecode.in_(assessment_type),
         )
     )
 
@@ -352,6 +352,7 @@ def query_vascular_access(
 
     return pd.DataFrame(results, columns=["pid", "procedure_time", "qhd20"])
 
+
 def query_first_seen(
     session: Session, pids: List[str], chunk_size: int = 100
 ) -> pd.DataFrame:
@@ -394,6 +395,7 @@ def query_paed_centres(session) -> list[str]:
     paed_centres = session.execute(query).all()
 
     return [row[0] for row in paed_centres]
+
 
 def query_demog(session: Session, pids: List[str]) -> pd.DataFrame:
     """

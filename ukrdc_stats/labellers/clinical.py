@@ -34,10 +34,10 @@ def _check_ukrdc_extract(cohort: pd.DataFrame) -> None:
 
 
 def prevalent_careplanning(
-    session, 
-    cohort, 
-    prevalence_date, 
-    assessment_type=["TPLTassess", "KRTassess", "PPDassess"]
+    session,
+    cohort,
+    prevalence_date,
+    assessment_type=["TPLTassess", "KRTassess", "PPDassess"],
 ) -> pd.DataFrame:
     """
     Function labels a cohort of patients with the care planning assessment data
