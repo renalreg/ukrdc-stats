@@ -136,3 +136,14 @@ dmypy.json
 # Places to stash bits that shouldn't be on github
 .do_not_commit
 .qodo
+cache/
+/tests/test_statistical_accuracy/output
+/tests/test_statistical_accuracy/data
+/static 
+/templates
+
+# Some stuff here not appropriate for public repo
+demo/exploratory
+
+
+__marimo__/

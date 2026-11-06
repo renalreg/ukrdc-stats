@@ -219,6 +219,60 @@ demographic_generic = """
         - The cohort is filtered to only include patients with a treatment record which overlaps 90 days prior to the calculation time. 
 """
 
+careplanning_descriptions = {
+    "CKD_CAREPLANNING": dedent(
+        """
+        # Prevalent CKD Careplanning Assessment
+
+        ## Overview
+        This pie chart shows the outcome of the most recent Transition to Long-Term
+        (TPLT) careplanning assessment for prevalent CKD patients at the prevalence
+        point. Patients with no recorded assessment are shown as "No assessment".
+
+        ## Assessment Outcomes
+        - Suitable: Patient assessed as suitable for long-term KRT planning
+        - In-progress: Assessment ongoing
+        - Unsuitable: Patient assessed as not yet suitable
+        - No assessment: No TPLT assessment recorded
+
+        ## Methodology
+        - Careplanning data is sourced from the XML archive database
+        - Only UKRDC extract patients can be labelled (archive holds UKRDC data only)
+        - The most recent assessment overlapping the prevalence point is selected
+
+        ## UKRDC Entities Used
+        - [PatientRecord](https://renalregistry.atlassian.net/wiki/spaces/UD/pages/2006450149/PatientRecord): sendingextract
+        - XML Archive: Careplanning assessments (assessmenttypecode, assessmentoutcomecode)
+        """
+    ),
+    "KRT_CAREPLANNING": dedent(
+        """
+        # KRT Careplanning Assessment
+
+        ## Overview
+        This pie chart shows the outcome of the most recent Transition to Long-Term
+        (TPLT) careplanning assessment for KRT patients. Patients with no recorded
+        assessment are shown as "No assessment".
+
+        ## Assessment Outcomes
+        - Suitable: Patient assessed as suitable for long-term KRT planning
+        - In-progress: Assessment ongoing
+        - Unsuitable: Patient assessed as not yet suitable
+        - No assessment: No TPLT assessment recorded
+
+        ## Methodology
+        - Careplanning data is sourced from the XML archive database
+        - Only UKRDC extract patients can be labelled (archive holds UKRDC data only)
+        - The most recent assessment overlapping the prevalence point is selected
+
+        ## UKRDC Entities Used
+        - [PatientRecord](https://renalregistry.atlassian.net/wiki/spaces/UD/pages/2006450149/PatientRecord): sendingextract
+        - XML Archive: Careplanning assessments (assessmenttypecode, assessmentoutcomecode)
+        """
+    ),
+}
+
+
 demographic_descriptions = {
     "GENDER_DESCRIPTION": dedent(
         f"""
