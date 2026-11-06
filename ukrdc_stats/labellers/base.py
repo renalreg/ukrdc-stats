@@ -29,8 +29,6 @@ def nhs_number(
     """
     if "nhs_number" in patient_cohort.columns:
         raise ValueError("Cohort already labelled with nhs_number")
-    
-    
 
     pids = patient_cohort["pid"].unique().tolist()
 
@@ -39,16 +37,13 @@ def nhs_number(
     rows = []
     for i in range(0, len(pids), chunk_size):
         chunk = pids[i : i + chunk_size]
-        query = (
-            select(
-                PatientNumber.pid,
-                PatientNumber.patientid.label("nhs_number"),
-                PatientNumber.organization.label("nhs_number_type"),
-            )
-            .where(
-                PatientNumber.pid.in_(chunk),
-                PatientNumber.organization.in_(["NHS", "CHI", "HSC"]),
-            )
+        query = select(
+            PatientNumber.pid,
+            PatientNumber.patientid.label("nhs_number"),
+            PatientNumber.organization.label("nhs_number_type"),
+        ).where(
+            PatientNumber.pid.in_(chunk),
+            PatientNumber.organization.in_(["NHS", "CHI", "HSC"]),
         )
         rows.extend(session.execute(query).all())
 
@@ -73,8 +68,46 @@ def nhs_number(
     if include_type:
         merge_cols.append("nhs_number_type")
 
+    patient_cohort = patient_cohort.merge(ni_map[merge_cols], on="pid", how="left")
+
+    return patient_cohort
+
+
+def nhs_uid(
+    patient_cohort: pd.DataFrame,
+    session: Session
+) -> pd.DataFrame:
+    """
+
+    """
+    if "ukrr_uid" in patient_cohort.columns:
+        raise ValueError("Cohort already labelled with ukrr uid")
+
+    pids = patient_cohort["pid"].unique().tolist()
+
+    # Query PatientNumber in chunks of 100 to avoid large IN clauses
+    chunk_size = 100
+    rows = []
+    for i in range(0, len(pids), chunk_size):
+        chunk = pids[i : i + chunk_size]
+        query = select(
+            PatientNumber.pid,
+            PatientNumber.patientid.label("ukrr_uid"),
+        ).where(
+            PatientNumber.pid.in_(chunk),
+            PatientNumber.organization == 'UKRR_UID',
+        )
+        rows.extend(session.execute(query).all())
+
+    if not rows:
+        patient_cohort["ukrr_uid"] = pd.NA
+
+        return patient_cohort
+
     patient_cohort = patient_cohort.merge(
-        ni_map[merge_cols], on="pid", how="left"
+        pd.DataFrame(rows, columns=["pid", "ukrr_uid"]), 
+        on="pid", 
+        how="left"
     )
 
     return patient_cohort

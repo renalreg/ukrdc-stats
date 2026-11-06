@@ -112,7 +112,16 @@ def allen_relationships(
     merged["relationship"] = np.select(conditions, choices, default="unknown")
 
     result = merged[
-        [group_col, "_idx_i", "_idx_j", f"{start_col}_i", f"{end_col}_i", f"{start_col}_j", f"{end_col}_j", "relationship"]
+        [
+            group_col,
+            "_idx_i",
+            "_idx_j",
+            f"{start_col}_i",
+            f"{end_col}_i",
+            f"{start_col}_j",
+            f"{end_col}_j",
+            "relationship",
+        ]
     ].rename(
         columns={
             "_idx_i": "idx_i",

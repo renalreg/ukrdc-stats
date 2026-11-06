@@ -2,12 +2,14 @@ import datetime as dt
 from typing import Optional
 
 import pandas as pd
+from sqlalchemy.orm import Session
 from ukrdc_stats.utils.database import get_archive_sessionmaker
 from ukrdc_stats.utils.query import pid_ni_map
 from ukrdc_stats.labellers.query import (
     query_careplanning,
     query_vascular_access,
     query_dialysis_sessions,
+    query_first_seen,
 )
 from ukrdc_stats.exceptions import MissingColumnError
 
@@ -32,7 +34,10 @@ def _check_ukrdc_extract(cohort: pd.DataFrame) -> None:
 
 
 def prevalent_careplanning(
-    session, cohort, prevalence_date, assessment_type="TPLTassess"
+    session, 
+    cohort, 
+    prevalence_date, 
+    assessment_type=["TPLTassess", "KRTassess", "PPDassess"]
 ) -> pd.DataFrame:
     """
     Function labels a cohort of patients with the care planning assessment data
@@ -55,8 +60,14 @@ def prevalent_careplanning(
 
     _check_ukrdc_extract(cohort)
 
-    if assessment_type not in ["TPLTassess", "KRTassess"]:
-        raise ValueError("assessment_type must be either 'TPLTassess' or 'KRTassess'")
+    for at in assessment_type:
+        if at not in ["TPLTassess", "KRTassess", "PPDassess"]:
+            msg = f""" Assessment type {at} passed which is not in the dataset:
+            TPLTassess -> transplant suitability assessment 
+            KRTassess -> prefered choice of krt 
+            PPDassess -> prefered place of dying
+            """
+            raise ValueError(msg)
 
     if "pid" not in cohort.columns:
         raise MissingColumnError("cohort must contain 'pid' column")
@@ -69,7 +80,7 @@ def prevalent_careplanning(
 
     with archive_sessionmaker() as archive_session:
         careplanning_data = query_careplanning(
-            archive_session, sending_facilities, prevalence_date
+            archive_session, sending_facilities, assessment_type, prevalence_date
         )
 
     # Map patient IDs using pid_ni_map
@@ -80,9 +91,6 @@ def prevalent_careplanning(
         how="left",
     )
 
-    careplanning_data = careplanning_data[
-        careplanning_data["assessmenttypecode"] == assessment_type
-    ]
     careplanning_data = careplanning_data[
         [
             "pid",
@@ -181,6 +189,31 @@ def pre_start_careplanning(
     return cohort
 
 
+def link_first_seen(session: Session, cohort: pd.DataFrame) -> pd.DataFrame:
+    """
+    Labels a cohort with the date each patient was first seen by renal
+    services and the centre that recorded it. This is recorded in the
+    UKRDC as a treatment with modality code 101; the earliest fromtime is
+    taken as the first_seen date.
+
+    Args:
+        session: UKRDC database session.
+        cohort: DataFrame with a 'pid' column.
+
+    Returns:
+        The cohort with 'first_seen' and 'first_seen_centre' columns
+        merged on 'pid'. Patients without a modality 101 record have
+        first_seen = NaT and first_seen_centre = NaN.
+    """
+
+    if "pid" not in cohort.columns:
+        raise MissingColumnError("cohort must contain 'pid' column")
+
+    first_seen = query_first_seen(session, cohort["pid"].unique().tolist())
+
+    return cohort.merge(first_seen, on="pid", how="left")
+
+
 def eskd():
     pass
 
@@ -230,6 +263,7 @@ def vascular_access(
     cohort.loc[cohort["vascular_access_date"].isna(), "access"] = "Missing"
 
     return cohort
+
 
 def hd_dialysis_frequency(session, patient_cohort, start, stop, mode="median"):
     # todo: check for other codes/code standards

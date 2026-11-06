@@ -92,7 +92,7 @@ CKD_KEY_COLUMNS = [
 
 
 def main():
-    with get_sessionmaker(SERVER, keypath=KEYPATH, caching=False)() as session:
+    with get_sessionmaker(SERVER, keypath=KEYPATH, caching=True)() as session:
         for centre in CENTRES:
             krt_frames: list[pd.DataFrame] = []
             ckd_frames: list[pd.DataFrame] = []

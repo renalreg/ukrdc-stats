@@ -9,6 +9,8 @@ TODO:
 """
 
 import datetime as dt
+from typing import Optional
+
 from ukrdc_stats.cohorts.schema import (
     krt_base_schema,
     krt_query_incident_schema,
@@ -119,9 +121,16 @@ def query_krt_incident(
     start: dt.datetime,
     recovery_window: dt.timedelta = dt.timedelta(days=90),
     sending_extract: str = "UKRDC",
+    ukrdcids: Optional[list[str]] = None,
 ) -> krt_base_schema:
     """Core query containing all of the data from the ukrdc database
     necessary to generate an incident krt cohort.
+
+    Args:
+        ukrdcids (Optional[list[str]]): Restrict returned treatments to these
+            ukrdcids. The filter is applied on the outer query so all
+            treatment rows for a matching patient are kept intact for
+            timeline chaining.
 
     Returns:
         krt_base_schema: Patient cohort dataframe
@@ -270,6 +279,9 @@ def query_krt_incident(
             PatientRecord.sendingextract == sending_extract,
         )
     )
+
+    if ukrdcids is not None:
+        query = query.where(PatientRecord.ukrdcid.in_(ukrdcids))
 
     data = session.execute(query).all()
 

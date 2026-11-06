@@ -15,7 +15,7 @@ version = "2.13.4"
 SQLAlchemy = "^2.0.0" 
 pandas = "^2.2.2" 
 python = "^3.12" 
-ukrdc-sqla = "^4.0.0"
+ukrdc-sqla = "^5.2.0"
 psycopg = {extras = ["binary"], version = "^3.2.3"}
 setuptools = "^75.8.0"
 pandera = "^0.30.1"

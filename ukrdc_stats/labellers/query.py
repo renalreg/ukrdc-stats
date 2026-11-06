@@ -12,6 +12,7 @@ data.
 
 import zipfile
 import shutil
+from contextlib import suppress
 from typing import List, Optional
 
 import pandas as pd
@@ -21,19 +22,19 @@ from sqlalchemy.orm import Session
 
 from ukrdc_sqla.ukrdc import (
     LabOrder,
-    ResultItem, 
+    ResultItem,
     Address,
     PatientRecord,
     Patient,
     DialysisSession,
-    Facility
+    Facility,
+    Treatment,
 )
 from ukrdc_sqla.utils.constants import FacilityType
 from ukrdc_sqla.xmlarchive import Patient as XMLPatient, Assessment
 
 
 from urllib.request import urlretrieve
-from pathlib import Path
 
 from ukrdc_stats.utils.cache import CONFIG
 
@@ -56,15 +57,14 @@ def download_ons_address_data():
     zip_path = cache_dir.parent / "ons_data.zip"
     zip_path.parent.mkdir(parents=True, exist_ok=True)
 
-    urlretrieve(ONS_ADDRESS_DATA_URL, zip_path)
-    
+    urlretrieve(ONS_ADDRESS_DATA_URL, zip_path)  # nosec B310 - hardcoded HTTPS URL constant
+
     with open(zip_path, "rb") as f:
         header = f.read(4)
     if header[:2] != b"PK":
-        try:
+        # don't let a cleanup failure mask the real error
+        with suppress(OSError):
             zip_path.unlink(missing_ok=True)
-        except Exception:
-            pass
         raise ValueError(
             "ONS download did not return a zip file. "
             "Check ONS_ADDRESS_DATA_URL and network access."
@@ -85,7 +85,6 @@ def download_ons_address_data():
 
 
 def query_ons_postcode_data() -> pd.DataFrame:
-
     cache_dir = ONS_CACHE_DIR
     cache_dir.mkdir(parents=True, exist_ok=True)
 
@@ -228,12 +227,19 @@ def query_postcodes(
 
     return df
 
-def query_careplanning(archieve_session: Session, facility_codes: List[str], prevalence_point: dt.datetime = None)->pd.DataFrame:
+
+def query_careplanning(
+    archieve_session: Session,
+    facility_codes: List[str],
+    assessment_type: List[str] = ["TRTassess", "RRTassess", "PPDassess"],
+    prevalence_point: dt.datetime = None,
+) -> pd.DataFrame:
     """Extract care-planning assessments from the archive database. If a
-    prevalence point is provided the most assessment prior to the prevelance 
-    point is selected. 
+    prevalence point is provided the most assessment prior to the prevelance
+    point is selected.
     """
-    
+
+    # retreive all the assessments for a given set of facilities and assessment_types
     assessments_query = (
         select(
             XMLPatient.nationalid.label("patientid"),
@@ -256,9 +262,10 @@ def query_careplanning(archieve_session: Session, facility_codes: List[str], pre
         )
         .where(
             XMLPatient.sendingfacility.in_(facility_codes),
+            Assessment.assessmenttypecode.in_(assessment_type)
         )
     )
-    
+
     if prevalence_point:
         assessments_query = assessments_query.where(
             Assessment.assessmentstart < prevalence_point
@@ -270,32 +277,34 @@ def query_careplanning(archieve_session: Session, facility_codes: List[str], pre
             XMLPatient.nationalid,
             XMLPatient.organization,
             XMLPatient.sendingfacility,
-            Assessment.assessmentstart.desc()
+            Assessment.assessmentstart.desc(),
         )
-
 
     prevalent_assessments = archieve_session.execute(assessments_query).all()
     if not prevalent_assessments:
-        prevalent_assessments_df = pd.DataFrame(columns=[
-            "patientid", 
-            "organization", 
-            "sendingfacility",
-            "numbertype", 
-            "creation_date", 
-            "assessmentstart", 
-            "assessmentend", 
-            "assessmenttypecode", 
-            "assessmenttypecodestd", 
-            "assessmenttypecodedesc", 
-            "assessmentoutcomecode", 
-            "assessmentoutcomecodestd", 
-            "assessmentoutcomecodedesc"
-        ])
-    
+        prevalent_assessments_df = pd.DataFrame(
+            columns=[
+                "patientid",
+                "organization",
+                "sendingfacility",
+                "numbertype",
+                "creation_date",
+                "assessmentstart",
+                "assessmentend",
+                "assessmenttypecode",
+                "assessmenttypecodestd",
+                "assessmenttypecodedesc",
+                "assessmentoutcomecode",
+                "assessmentoutcomecodestd",
+                "assessmentoutcomecodedesc",
+            ]
+        )
+
     else:
         prevalent_assessments_df = pd.DataFrame(prevalent_assessments)
-    
+
     return prevalent_assessments_df
+
 
 def query_vascular_access(
     session: Session,
@@ -303,8 +312,7 @@ def query_vascular_access(
     cutoff_dates: List[dt.datetime],
     chunk_size: int = 100,
 ) -> pd.DataFrame:
-    """Extract the most recent dialysis session prior to a patient specific date
-    """
+    """Extract the most recent dialysis session prior to a patient specific date"""
 
     if len(pids) != len(cutoff_dates):
         raise ValueError("pids and cutoff_dates must be the same length")
@@ -344,10 +352,44 @@ def query_vascular_access(
 
     return pd.DataFrame(results, columns=["pid", "procedure_time", "qhd20"])
 
+def query_first_seen(
+    session: Session, pids: List[str], chunk_size: int = 100
+) -> pd.DataFrame:
+    """Extract the earliest treatment start per patient recorded with
+    modality code 101 (first contact with renal services), along with the
+    centre that recorded it. Queries are chunked to avoid connection
+    timeouts caused by large IN clauses."""
+
+    results = []
+    for i in range(0, len(pids), chunk_size):
+        chunk = pids[i : i + chunk_size]
+        # DISTINCT ON takes the earliest 101 treatment per pid; id breaks
+        # ties where fromtime is duplicated
+        query = (
+            select(
+                Treatment.pid,
+                Treatment.fromtime.label("first_seen"),
+                Treatment.healthcarefacilitycode.label("first_seen_centre"),
+            )
+            .where(
+                Treatment.pid.in_(chunk),
+                Treatment.admitreasoncode == "101",
+            )
+            .distinct(Treatment.pid)
+            .order_by(Treatment.pid, Treatment.fromtime, Treatment.id)
+        )
+        results.extend(session.execute(query).all())
+
+    columns = ["pid", "first_seen", "first_seen_centre"]
+    if not results:
+        return pd.DataFrame(columns=columns)
+
+    return pd.DataFrame(results, columns=columns)
+
+
 def query_paed_centres(session) -> list[str]:
-    query = (
-        select(Facility.facilitycode)
-        .where(Facility.facilitytype == FacilityType.paediatric_renal_centre)
+    query = select(Facility.facilitycode).where(
+        Facility.facilitytype == FacilityType.paediatric_renal_centre
     )
     paed_centres = session.execute(query).all()
 
@@ -386,15 +428,15 @@ def query_demog(session: Session, pids: List[str]) -> pd.DataFrame:
 
 
 def query_dialysis_sessions(session: Session, patient_list: pd.Series):
-    
     query = (
         select(
-            DialysisSession.pid, 
-            DialysisSession.id, 
-            DialysisSession.procedure_type_code, 
-            DialysisSession.procedure_time, 
-            DialysisSession.qhd20
-        ).where(DialysisSession.pid.in_(patient_list))
+            DialysisSession.pid,
+            DialysisSession.id,
+            DialysisSession.procedure_type_code,
+            DialysisSession.procedure_time,
+            DialysisSession.qhd20,
+        )
+        .where(DialysisSession.pid.in_(patient_list))
         .order_by(DialysisSession.pid, DialysisSession.procedure_time)
     )
 

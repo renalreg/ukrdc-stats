@@ -75,9 +75,9 @@ def ckd_prevalent(
         ukrdc_base_data["calc_egfr"] = None
 
     # Take the minimum of lab eGFR and calculated eGFR
-    ukrdc_base_data["egfr_min"] = ukrdc_base_data[
-        ["lab_egfr_min", "calc_egfr"]
-    ].min(axis=1)
+    ukrdc_base_data["egfr_min"] = ukrdc_base_data[["lab_egfr_min", "calc_egfr"]].min(
+        axis=1
+    )
 
     # Error handling for low completeness egfr
     if ukrdc_base_data["egfr_min"].sum() / ukrdc_base_data.shape[0] < 0.1:
@@ -134,9 +134,9 @@ def _chain_treatments(base_cohort, recovery_window: dt.timedelta):
     # it is gapped from everything before it, not just its neighbour. This
     # catches records contained by an earlier, longer record (e.g. A contains
     # B and C with a gap between B and C).
-    base_cohort["prev_max_totime"] = base_cohort.groupby("ukrdcid")[
-        "totime"
-    ].transform(lambda s: s.cummax().shift(1))
+    base_cohort["prev_max_totime"] = base_cohort.groupby("ukrdcid")["totime"].transform(
+        lambda s: s.cummax().shift(1)
+    )
     base_cohort["new_timeline"] = base_cohort["prev_max_totime"].isna() | (
         base_cohort["prev_max_totime"] + recovery_window < base_cohort["fromtime"]
     )
@@ -318,7 +318,7 @@ def _label_incident(
     """
 
     # anyone who receives a transplant at any point is coded as chronic as long
-    #  as it doesn't fail within 14 days. At this point there shouldn't be any 
+    #  as it doesn't fail within 14 days. At this point there shouldn't be any
     # patients with historic transplants
     group1_ids = krt_new_cohort[
         (krt_new_cohort.dialtplt == "TX")
@@ -329,8 +329,8 @@ def _label_incident(
     # removed condition for modality to be dialysis to include failed transplants
     group2_ids = krt_new_cohort[
         (krt_new_cohort.timeline_length > recovery_window)
-        #& (krt_new_cohort.fromtime == krt_new_cohort.timeline_start)
-        #& krt_new_cohort.dialtplt.isin(["PD", "HD"])
+        # & (krt_new_cohort.fromtime == krt_new_cohort.timeline_start)
+        # & krt_new_cohort.dialtplt.isin(["PD", "HD"])
     ].ukrdcid.unique()
 
     # patients with ckd centre who die within 90 days, and modality which is not accute
@@ -430,6 +430,7 @@ def krt_incident(
     start_date: Optional[dt.datetime] = None,
     recovery_window: dt.timedelta = dt.timedelta(days=90),
     sending_extract: str = "UKRDC",
+    ukrdcids: Optional[list[str]] = None,
 ) -> krt_incident_schema:
     """
     Get the incident KRT cohort for a given renal centre, it's satellites and date range.
@@ -441,6 +442,7 @@ def krt_incident(
         start_date (Optional[dt.datetime], optional): Start date. If not set it will default to a year prior to the end date.
         recovery_window (dt.timedelta, optional): Time window for recovery used to determine chronic status. Defaults to 90 days.
         sending_extract (str, optional): Sending extract to filter patient records by, e.g. "UKRR". Defaults to "UKRDC".
+        ukrdcids (Optional[list[str]], optional): Restrict the cohort to these ukrdcids (within the centre's eligible patients). Defaults to None.
 
     """
 
@@ -454,7 +456,13 @@ def krt_incident(
 
     # extract, clean and label the patient records used to calculate incidence
     base_cohort = query_krt_incident(
-        session, centre, end_date, start_date, recovery_window, sending_extract
+        session,
+        centre,
+        end_date,
+        start_date,
+        recovery_window,
+        sending_extract,
+        ukrdcids,
     )
     base_cohort["dialtplt"] = base_cohort["registry_code_type"].copy()
     base_cohort.loc[

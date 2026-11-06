@@ -177,10 +177,12 @@ class KRTStats(JSONModel):
         ..., description="Sex breakdown of prevalent KRT patients"
     )
     incident_krt_careplanning: Labelled2d = Field(
-        ..., description="Careplanning assessment outcome breakdown of incident KRT patients"
+        ...,
+        description="Careplanning assessment outcome breakdown of incident KRT patients",
     )
     prevalent_krt_careplanning: Labelled2d = Field(
-        ..., description="Careplanning assessment outcome breakdown of prevalent KRT patients"
+        ...,
+        description="Careplanning assessment outcome breakdown of prevalent KRT patients",
     )
     incentre_dialysis_frequency: Labelled2d = Field(
         ..., description="Under maintenance: previously per week dialysis frequency"
@@ -231,7 +233,8 @@ class CKDStats(JSONModel):
         ..., description="Sex breakdown of prevalent CKD patients"
     )
     prevalent_ckd_careplanning: Labelled2d = Field(
-        ..., description="Careplanning assessment outcome breakdown of prevalent CKD patients"
+        ...,
+        description="Careplanning assessment outcome breakdown of prevalent CKD patients",
     )
     metadata: CKDMetadata
 

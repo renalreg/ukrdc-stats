@@ -9,6 +9,7 @@ which columns can be null but pandera provides many much more sophisticated
 options here.
 """
 
+import pandas as pd
 import pandera.pandas as pa
 from pandera.typing import Series
 
@@ -30,6 +31,11 @@ class krt_base_schema(pa.DataFrameModel):
     deathtime: Series[pa.DateTime] = pa.Field(nullable=True)
     fromtime: Series[pa.DateTime]
     totime: Series[pa.DateTime] = pa.Field(nullable=True)
+
+    @pa.dataframe_check
+    def fromtime_before_totime(cls, df: pd.DataFrame) -> Series[bool]:
+        # open treatments have no totime; closed ones must end after they start
+        return df["totime"].isna() | (df["fromtime"] <= df["totime"])
 
     class Config:
         coerce = True

@@ -24,7 +24,6 @@ from ukrdc_stats.cohorts.base import ckd_prevalent
 from ukrdc_stats.descriptions import careplanning_descriptions, demographic_descriptions
 from ukrdc_stats.exceptions import NoCohortError
 from ukrdc_stats.labellers.clinical import prevalent_careplanning
-from ukrdc_stats.labellers.geography import imd
 from ukrdc_stats.utils.data import aggregate_data
 
 COLUMN_ATTRIBUTES = ["satellite_code"]
@@ -67,7 +66,7 @@ class PrevalentCKDCalculator:
                 f"No patients found in the cohort. Did you mean to try and extract facility {self.facility}?"
             )
 
-        #cohort = imd(self.session, cohort)
+        # cohort = imd(self.session, cohort)
         cohort = prevalent_careplanning(
             self.session, cohort, self.prevalence_point, "TPLTassess"
         )
