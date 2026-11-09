@@ -76,8 +76,7 @@ def main():
 
                 # Extract prevalent and label
                 krt_prevalent_report = krt_prevalent(session, centre, quarter_end)
-                # krt_prevalent_report = vascular_access(krt_prevalent_report, session, quarter_end)
-
+                
                 krt_prevalent_report["incidprev"] = "prevalent"
                 krt_prevalent_reports.append(krt_prevalent_report)
 
