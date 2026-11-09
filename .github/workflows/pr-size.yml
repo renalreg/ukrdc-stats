@@ -25,3 +25,4 @@ jobs:
           message_if_xl: >-
             This PR changes more than 1500 lines (size/XL).
             Please split it into smaller PRs.
+            Run `tox -e pre_commit` locally to stop notebook output polluting pr.
