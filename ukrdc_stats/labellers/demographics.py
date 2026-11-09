@@ -1,3 +1,5 @@
+"""Labellers attaching demographics (age, sex, ethnicity) to a cohort."""
+
 import datetime as dt
 from typing import Any
 
@@ -12,8 +14,9 @@ from ukrdc_stats.utils.data import GENDER_GROUP_MAP, map_codes
 def _fetch_missing_demog(
     patient_cohort: pd.DataFrame, column: str, session: Session | None
 ) -> pd.DataFrame:
-    """Look up demographic data via query_demog and merge it onto the cohort
-    when a required column is absent.
+    """Fetch demographic data when a required column is absent.
+
+    Looks the data up via query_demog and merges it onto the cohort.
 
     Args:
         patient_cohort (pd.DataFrame): Cohort being labelled.
@@ -93,7 +96,10 @@ def sex(
     """Apply gender group mapping to patient cohort.
 
     Args:
-        patient_cohort (pd.DataFrame): DataFrame containing patient data with 'gender' column.
+        patient_cohort (pd.DataFrame): DataFrame containing patient data
+            with a 'gender' column.
+        session (Session | None, optional): UKRDC session used to fetch
+            gender when the column is missing. Defaults to None.
 
     Returns:
         pd.DataFrame: DataFrame with 'sex' column added.
@@ -115,7 +121,8 @@ def ethnicity(
     """Apply UKKA ethnic grouping to patient cohort.
 
     Args:
-        patient_cohort (pd.DataFrame): DataFrame containing patient data with 'ethnicgroupcode' column.
+        patient_cohort (pd.DataFrame): DataFrame containing patient data
+            with an 'ethnicgroupcode' column.
         session (Session): UKRDC session used to look up the code mapping.
 
     Returns:

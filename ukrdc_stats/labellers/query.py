@@ -9,8 +9,8 @@ data.
 import datetime as dt
 import shutil
 import zipfile
+from collections.abc import Sequence
 from contextlib import suppress
-from typing import Sequence
 from urllib.request import urlretrieve
 
 import pandas as pd
@@ -49,7 +49,6 @@ def download_ons_address_data() -> None:
     zip_path = cache_dir.parent / "ons_data.zip"
     zip_path.parent.mkdir(parents=True, exist_ok=True)
 
-    # noqa justified: fixed HTTPS constant to the ONS ArcGIS portal
     urlretrieve(ONS_ADDRESS_DATA_URL, zip_path)  # noqa: S310
 
     with zip_path.open("rb") as f:
@@ -75,8 +74,12 @@ def download_ons_address_data() -> None:
     zip_path.unlink(missing_ok=True)
 
 
-
 def query_ons_postcode_data() -> pd.DataFrame:
+    """Load the ONS postcode IMD data, downloading it if not cached.
+
+    Returns:
+        pd.DataFrame: Postcodes with imd20ind and imddecile columns.
+    """
     cache_dir = ONS_CACHE_DIR
     cache_dir.mkdir(parents=True, exist_ok=True)
 
@@ -110,13 +113,24 @@ def query_results(
     to_time: dt.datetime | None = None,
     mode: str = "raw",
 ) -> pd.DataFrame:
-    """Extract test results for a cohort of patients using chunked queries
-    to prevent database timeouts.
+    """Extract test results for a cohort of patients using chunked queries.
+
+    Chunking prevents database timeouts on large IN clauses.
 
     Args:
+        session (Session): UKRDC database session.
+        pids (list[str]): Patient ids to extract results for.
+        test_codes (list[str] | None): serviceidcodes to filter on. None
+            fetches everything.
+        chunk_size (int): Patients per query chunk.
+        from_time (dt.datetime | None): Earliest observationtime to include.
+        to_time (dt.datetime | None): Latest observationtime to include.
         mode: "raw" returns all rows. "min" or "max" aggregates to one
               row per pid per serviceidcode using MIN/MAX(resultvalue),
               reducing data transfer for large result sets.
+
+    Returns:
+        pd.DataFrame: Result rows for the requested pids.
     """
     results = []
 
@@ -200,24 +214,23 @@ def query_postcodes(
         chunk_data = session.execute(query).all()
         if chunk_data:
             results.extend(chunk_data)
-    df = pd.DataFrame(results)
+    postcodes_df = pd.DataFrame(results)
 
     # Define preference order for addressuse
-
     if not results:
         return pd.DataFrame(columns=["pid", "postcode"])
     use_order = {"H": 1, "PST": 2, None: 3, "TMP": 4}
-    df["use_priority"] = df["addressuse"].map(use_order).fillna(3)
+    postcodes_df["use_priority"] = postcodes_df["addressuse"].map(use_order).fillna(3)
 
     # Sort by pid and priority, then keep first occurrence per pid
-    postcodes_df = postcodes_df.sort_values(
-        ["pid", "use_priority"]
-    ).groupby("pid", as_index=False).first()
+    postcodes_df = (
+        postcodes_df.sort_values(["pid", "use_priority"])
+        .groupby("pid", as_index=False)
+        .first()
+    )
 
     # Drop the priority column
-    postcodes_df = postcodes_df.drop(columns=["use_priority", "addressuse"])
-
-    return postcodes_df
+    return postcodes_df.drop(columns=["use_priority", "addressuse"])
 
 
 def query_careplanning(
@@ -316,8 +329,7 @@ def query_vascular_access(
     cutoff_dates: Sequence[dt.date],
     chunk_size: int = 100,
 ) -> pd.DataFrame:
-    """Extract the most recent dialysis session prior to a patient specific
-    date.
+    """Extract the most recent dialysis session prior to a patient-specific date.
 
     Args:
         session (Session): UKRDC database session.
@@ -375,10 +387,10 @@ def query_vascular_access(
 def query_first_seen(
     session: Session, pids: list[str], chunk_size: int = 100
 ) -> pd.DataFrame:
-    """Extract the earliest treatment start per patient recorded with
-    modality code 101 (first contact with renal services), along with the
-    centre that recorded it. Queries are chunked to avoid connection
-    timeouts caused by large IN clauses.
+    """Extract each patient's earliest modality-101 treatment and its centre.
+
+    Modality code 101 records first contact with renal services. Queries
+    are chunked to avoid connection timeouts caused by large IN clauses.
     """
     results = []
     for i in range(0, len(pids), chunk_size):
@@ -418,8 +430,10 @@ def query_paed_centres(session: Session) -> list[str]:
 
 
 def query_demog(session: Session, pids: list[str]) -> pd.DataFrame:
-    """Extracts demographic data for a list of pids. Queries are chunked into
-    groups of 100 to avoid connection timeouts caused by large IN clauses.
+    """Extract demographic data for a list of pids.
+
+    Queries are chunked into groups of 100 to avoid connection timeouts
+    caused by large IN clauses.
     """
     chunk_size = 100
     demog_data = []

@@ -1,3 +1,5 @@
+"""Clinical labellers: careplanning, first-seen, vascular access, dialysis."""
+
 import datetime as dt
 
 import pandas as pd
@@ -46,8 +48,7 @@ def prevalent_careplanning(
     prevalence_date: dt.datetime,
     assessment_type: list[str] | None = None,
 ) -> pd.DataFrame:
-    """Label a cohort of patients with care planning assessment data at a
-    point in time.
+    """Label a cohort with care planning assessment data at a point in time.
 
     Args:
         session (Session): UKRDC database session.
@@ -128,8 +129,10 @@ def pre_start_careplanning(
     cohort: pd.DataFrame,
     assessment_type: str = "TPLTassess",
 ) -> pd.DataFrame:
-    """Label a cohort of incident patients with the most recent care planning
-    assessment prior to each patient's KRT start date (fromtime).
+    """Label incident patients with their most recent pre-KRT care plan.
+
+    The assessment used is the most recent one prior to each patient's KRT
+    start date (fromtime).
 
     Args:
         session (Session): UKRDC database session.
@@ -203,10 +206,11 @@ def pre_start_careplanning(
 
 
 def link_first_seen(session: Session, cohort: pd.DataFrame) -> pd.DataFrame:
-    """Labels a cohort with the date each patient was first seen by renal
-    services and the centre that recorded it. This is recorded in the
-    UKRDC as a treatment with modality code 101; the earliest fromtime is
-    taken as the first_seen date.
+    """Labels a cohort with each patient's first-seen date and centre.
+
+    The first-seen date is recorded in the UKRDC as a treatment with
+    modality code 101; the earliest fromtime is taken as the first_seen
+    date.
 
     Args:
         session: UKRDC database session.
@@ -236,8 +240,10 @@ def vascular_access(
     mode: str = "prevalent",
     prevalence_date: dt.date | None = None,
 ) -> pd.DataFrame:
-    """Label a cohort with the vascular access (qhd20) recorded at the most
-    recent dialysis session prior to a cutoff date.
+    """Label a cohort with the vascular access (qhd20) at a cutoff date.
+
+    The access recorded at the most recent dialysis session prior to the
+    cutoff is used.
 
     In prevalent mode the prevalence_date is used as the cutoff for every
     patient; in incident mode each patient's own KRT start date (fromtime)
@@ -298,7 +304,7 @@ def hd_dialysis_frequency(
     patient_cohort: pd.DataFrame,
     start: dt.datetime,
     stop: dt.datetime,
-    mode: str = "median",
+    mode: str = "median",  # noqa: ARG001 - only median is implemented; kept for API compat
 ) -> pd.DataFrame:
     """Label a cohort with the weekly in-centre haemodialysis session count.
 

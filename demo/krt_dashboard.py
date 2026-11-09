@@ -7,6 +7,7 @@ Run with: marimo run demo/krt_dashboard.py
 """
 
 import marimo
+import pandas as pd
 
 __generated_with = "0.24.0"
 app = marimo.App(width="medium")
@@ -119,7 +120,6 @@ def _(mo, pivot, px):
     )
     fig.update_layout(barmode="stack", legend_title_text="")
     mo.vstack([fig, mo.ui.table(pivot.reset_index())])
-    return
 
 
 if __name__ == "__main__":

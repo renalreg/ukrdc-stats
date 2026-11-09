@@ -1,3 +1,5 @@
+"""Labellers attaching national patient identifiers to a cohort."""
+
 import pandas as pd
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -9,9 +11,10 @@ def nhs_number(
     session: Session,
     include_type: bool = False,
 ) -> pd.DataFrame:
-    """Attaches the NHS number (or CHI/HSC equivalent) to each patient in the
-    cohort by querying the PatientNumber table. Where an NHS number is not
-    available, falls back to CHI then HSC, matching the pattern used in
+    """Attaches the NHS number (or CHI/HSC equivalent) to each patient.
+
+    The numbers come from the PatientNumber table. Where an NHS number is
+    not available, falls back to CHI then HSC, matching the pattern used in
     incident_patients_year_comparison.py.
 
     Args:
@@ -66,13 +69,19 @@ def nhs_number(
     if include_type:
         merge_cols.append("nhs_number_type")
 
-    patient_cohort = patient_cohort.merge(ni_map[merge_cols], on="pid", how="left")
-
-    return patient_cohort
+    return patient_cohort.merge(ni_map[merge_cols], on="pid", how="left")
 
 
 def nhs_uid(patient_cohort: pd.DataFrame, session: Session) -> pd.DataFrame:
-    """ """
+    """Attach the UKRR_UID for each patient in the cohort.
+
+    Args:
+        patient_cohort (pd.DataFrame): DataFrame with a ``pid`` column.
+        session (Session): UKRDC database session.
+
+    Returns:
+        pd.DataFrame: The cohort with a ``ukrr_uid`` column merged on ``pid``.
+    """
     if "ukrr_uid" in patient_cohort.columns:
         raise ValueError("Cohort already labelled with ukrr uid")
 
@@ -97,8 +106,6 @@ def nhs_uid(patient_cohort: pd.DataFrame, session: Session) -> pd.DataFrame:
 
         return patient_cohort
 
-    patient_cohort = patient_cohort.merge(
+    return patient_cohort.merge(
         pd.DataFrame(rows, columns=["pid", "ukrr_uid"]), on="pid", how="left"
     )
-
-    return patient_cohort

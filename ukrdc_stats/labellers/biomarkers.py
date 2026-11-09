@@ -1,3 +1,5 @@
+"""Labellers attaching biomarker results (eGFR) to a patient cohort."""
+
 import datetime as dt
 
 import pandas as pd
@@ -81,7 +83,7 @@ def egfr(
     )
 
     # Calculate eGFR row by row for null eGFRs (which are the QBLA1 creatinine results)
-    null_egfr_mask = egfr_data["egfr"].isnull()
+    null_egfr_mask = egfr_data["egfr"].isna()
 
     if null_egfr_mask.any():
         egfr_data.loc[null_egfr_mask, "egfr"] = egfr_data[null_egfr_mask].apply(
@@ -129,8 +131,6 @@ def egfr(
     )
 
     # Merge the final deduplicated eGFRs back onto the patient cohort
-    patient_cohort = patient_cohort.merge(
+    return patient_cohort.merge(
         egfr_data[["pid", col_name, "egfr_date"]], on="pid", how="left"
     )
-
-    return patient_cohort

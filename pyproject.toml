@@ -12,9 +12,9 @@ version = "3.0.0"
 
 
 [tool.poetry.dependencies]
-SQLAlchemy = "^2.0.0" 
-pandas = "^2.2.2" 
-python = "^3.12" 
+SQLAlchemy = "^2.0.0"
+pandas = "^2.2.2"
+python = "^3.12"
 ukrdc-sqla = "^5.2.0"
 psycopg = {extras = ["binary"], version = "^3.2.3"}
 pandera = "^0.30.1"
@@ -136,9 +136,13 @@ ignore = [
 [tool.ruff.lint.per-file-ignores]
 # asserts and magic values are the point of tests; white-box testing of
 # private functions is deliberate
-"tests/**" = ["S101", "PLR2004", "D", "INP001", "SLF001"]
+"tests/**" = ["S101", "PLR2004", "D", "INP001", "SLF001", "ANN"]
 # live-DB statistical accuracy comparison scripts, not part of the pytest run
-"tests/test_statistical_accuracy/**" = ["ANN", "T201", "ERA001", "PD901"]
+"tests/test_statistical_accuracy/**" = [
+    "ANN", "T201", "ERA001", "PD", "E501", "RET", "C4", "TRY",
+]
+# UI-facing description constants; long prose lines are the point of the file
+"ukrdc_stats/descriptions.py" = ["E501"]
 # extraction scripts keep the basic families only (E W F I B)
 "scripts/**" = [
     "ANN", "ARG", "S", "TRY", "EM", "RET", "PD", "PTH", "C90", "D", "RUF",
@@ -182,6 +186,3 @@ layers = [
 [tool.sqlfluff.core]
 dialect = "postgres"
 templater = "raw"
-
-
-

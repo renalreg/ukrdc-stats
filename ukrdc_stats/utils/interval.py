@@ -17,8 +17,10 @@ def allen_relationships(
     end_col: str = "totime",
     recovery_window: dt.timedelta | None = None,
 ) -> pd.DataFrame:
-    """Compute all 13 Allen interval relationships for every pair of records
-    within each group via a self-join.
+    """Compute all 13 Allen interval relationships per group via a self-join.
+
+    Every pair of records within each group is compared, not just
+    neighbours.
 
     The recovery_window, if provided, is absorbed into the "before"/"after"
     and "overlaps"/"overlapped by" definitions — a gap smaller than the window

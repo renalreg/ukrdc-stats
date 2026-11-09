@@ -34,8 +34,9 @@ ROW_ATTRIBUTES = ["age", "ethnicity", "sex", "dialtplt", "assessmentoutcome"]
 
 
 class KRTStatsCalculator:
-    """Calculates demographic statistics for the incident and prevalent KRT
-    cohorts of a renal centre over a given time window.
+    """Calculates demographic statistics for incident and prevalent KRT cohorts.
+
+    The cohorts are those of a renal centre over a given time window.
     """
 
     def __init__(
@@ -44,14 +45,16 @@ class KRTStatsCalculator:
         facility: str,
         from_time: dt.datetime | None = None,
         to_time: dt.datetime | None = None,
-    ):
-        """Args:
-        session (Session): UKRDC database session.
-        facility (str): Renal centre code.
-        from_time (Optional[dt.datetime]): Start of the incidence window.
-            Defaults to a year before to_time.
-        to_time (Optional[dt.datetime]): End of the incidence window and
-            prevalence point. Defaults to now.
+    ) -> None:
+        """Initialise the calculator for a facility and time window.
+
+        Args:
+            session (Session): UKRDC database session.
+            facility (str): Renal centre code.
+            from_time (Optional[dt.datetime]): Start of the incidence window.
+                Defaults to a year before to_time.
+            to_time (Optional[dt.datetime]): End of the incidence window and
+                prevalence point. Defaults to now.
         """
         self.session = session
         self.facility = facility
@@ -65,9 +68,7 @@ class KRTStatsCalculator:
         self._aggregated: pd.DataFrame | None = None
 
     def extract_patient_cohort(self) -> None:
-        """Extract the incident and prevalent cohorts for the centre, combine
-        them and label with the demographic attributes.
-        """
+        """Extract, combine and label the incident and prevalent cohorts."""
         incident = krt_incident(
             self.session, self.facility, self.to_time, self.from_time
         )
@@ -79,7 +80,8 @@ class KRTStatsCalculator:
         combined = pd.concat([prevalent, incident], ignore_index=True)
         if combined.empty:
             raise NoCohortError(
-                f"No patients found in the cohort. Did you mean to try and extract facility {self.facility}?"
+                "No patients found in the cohort. Did you mean to try and "
+                f"extract facility {self.facility}?"
             )
 
         combined = age(combined, self.to_time, session=self.session)
@@ -94,8 +96,9 @@ class KRTStatsCalculator:
 
     @property
     def aggregated(self) -> pd.DataFrame:
-        """Long format headcounts split by satellite unit and incident/prevalent
-        cohort. Calculated once and reused by all the stats builders.
+        """Long format headcounts split by satellite unit and incidprev cohort.
+
+        Calculated once and reused by all the stats builders.
         """
         if self._aggregated is None:
             if self._patient_cohort is None:
@@ -114,8 +117,10 @@ class KRTStatsCalculator:
         return cohort["ukrdcid"].nunique()
 
     def extract_satellite_stats(self, unit: str = "all") -> KRTStats:
-        """Build the KRTStats for a single satellite unit, or for the whole
-        centre by re-aggregating over the satellite split.
+        """Build the KRTStats for a single satellite unit.
+
+        For the whole centre the unit-level counts are re-aggregated over
+        the satellite split.
 
         Args:
             unit (str): Satellite code, or "all" for the whole centre.
@@ -202,8 +207,9 @@ class KRTStatsCalculator:
         return UnitLevelKRTStats(all=self.extract_satellite_stats(), units=unit_stats)
 
     def generate_cohort_report(self) -> BaseTable:
-        """Return the aggregated long format headcounts, matching the shape of
-        the CSV produced by scripts/extract_krt_demog.py.
+        """Return the aggregated long format headcounts.
+
+        Matches the shape of the CSV produced by scripts/extract_krt_demog.py.
 
         Returns:
             BaseTable: Aggregated headcounts table.

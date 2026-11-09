@@ -1,3 +1,5 @@
+"""Shared query helpers: pid to national identifier mapping."""
+
 import pandas as pd
 from sqlalchemy import and_, or_, select
 from sqlalchemy.orm import Session
@@ -8,8 +10,9 @@ from ukrdc_stats.exceptions import EmptyCohortError
 
 
 def pid_ni_map(session: Session, centres: list[str]) -> pd.DataFrame:
-    """Function returns a mapping of patient ids to national ids for a given
-    facility. TODO: think through the ambiguities resulting from multiple pids
+    """Map patient ids to national ids for a given facility.
+
+    TODO: think through the ambiguities resulting from multiple pids
     mapping to the same ni.
     """
     # append depricated

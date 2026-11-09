@@ -87,7 +87,7 @@ Major refactor of the stats calculators. The public surface is smaller, the inte
       metadata: KRTMetadata
   ```
 
-- **Output models moved.** The old `ukrdc_stats.models` package has been removed; Pydantic response models now live in `ukrdc_stats.calculators.models`. In the future this will all potentially be moved into fastapi. 
+- **Output models moved.** The old `ukrdc_stats.models` package has been removed; Pydantic response models now live in `ukrdc_stats.calculators.models`. In the future this will all potentially be moved into fastapi.
 - **Dependency upgrades:** Python 3.12, Pydantic 2.x, SQLAlchemy 2.x, pandas 2.2.x and `ukrdc-sqla` ^4.0.0 are now required.
 - **Cached responses must be purged or versioned.** The `UnitLevelKRTStats` JSON shape has changed (renamed fields, new fields, placeholder fields). Any cached v2 responses will fail to deserialize into the v3 model.
 

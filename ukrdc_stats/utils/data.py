@@ -1,5 +1,4 @@
-"""Common utility functions useful in multiple statistics
-"""
+"""Common utility functions useful in multiple statistics."""
 
 import datetime as dt
 import warnings
@@ -71,9 +70,7 @@ def egfr(
     else:
         multiplier = multiplier * (scr_frac**alpha)
 
-    egfr = round(141 * multiplier * (0.993**age))
-
-    return egfr
+    return round(141 * multiplier * (0.993**age))
 
 
 def age_from_dob(date: dt.datetime, dob: dt.datetime) -> int:
@@ -115,7 +112,7 @@ def age_from_dob_exact(date: dt.datetime, dob: dt.datetime) -> float:
 
 
 def dob_cutoff_from_age(date: dt.datetime, age: int) -> dt.datetime:
-    """Returns a date a fixed number of years before give date
+    """Returns a date a fixed number of years before the given date.
 
     Args:
         date (dt.date): date to calculate from
@@ -127,9 +124,10 @@ def dob_cutoff_from_age(date: dt.datetime, age: int) -> dt.datetime:
     return date - dt.timedelta(days=age * 365.25)
 
 
-def map_codes(source_std: str, destination_std: str, session: Session) -> dict[str, str]:
-    """Use the code map table to return a code mapping set from the ukrdc as a
-    dictionary.
+def map_codes(
+    source_std: str, destination_std: str, session: Session
+) -> dict[str, str]:
+    """Return a code mapping from the ukrdc code map table as a dictionary.
 
     Args:
         source_std (str): Coding standard to map from
@@ -152,7 +150,8 @@ def map_codes(source_std: str, destination_std: str, session: Session) -> dict[s
     codes = {row.source_code: row.destination_code for row in session.execute(query)}
     if not codes:
         raise ValueError(
-            f"No codes found for source coding standard '{source_std}' and destination coding standard '{destination_std}'"
+            f"No codes found for source coding standard '{source_std}' "
+            f"and destination coding standard '{destination_std}'"
         )
 
     return codes
@@ -161,8 +160,9 @@ def map_codes(source_std: str, destination_std: str, session: Session) -> dict[s
 def lookup_codes(
     coding_standard: str, attribute: str, session: Session
 ) -> dict[str, str | None]:
-    """Get a code set from the ukrdc lookup and return some attribute from it
-    (most likely the description).
+    """Return an attribute for every code in a ukrdc coding standard.
+
+    The attribute is most likely the code's description.
 
     Args:
         coding_standard (str): The coding standard to lookup
@@ -179,7 +179,9 @@ def lookup_codes(
 
     # Handle empty results
     if not result:
-        warnings.warn(f"No codes found for coding standard '{coding_standard}'")
+        warnings.warn(
+            f"No codes found for coding standard '{coding_standard}'", stacklevel=2
+        )
         return {}
 
     # Convert to dictionary directly from ORM objects
@@ -187,8 +189,8 @@ def lookup_codes(
 
 
 def row_completeness(row: pd.Series, groupby_attributes: list[str]) -> int:
-    """Calculate completeness based on specified groupby attributes"""
-    return int(row[groupby_attributes].notnull().sum())
+    """Calculate completeness based on specified groupby attributes."""
+    return int(row[groupby_attributes].notna().sum())
 
 
 def aggregate_data(
@@ -196,10 +198,11 @@ def aggregate_data(
     column_attributes: list[str],
     row_attributes: list[str] | None = None,
 ) -> pd.DataFrame:
-    """Generate an aggregated dataframe in long format with headcounts
-    (ukrdcid) split by the specified columns. The remaining columns
-    will be rolled into the attribute (column name) and variable (column value)
-    columns.
+    """Generate long-format headcounts split by the specified columns.
+
+    Headcounts (ukrdcid) are split by the column attributes; the remaining
+    columns are rolled into the attribute (column name) and variable
+    (column value) columns.
 
     Args:
         cohort_wide (pd.DataFrame): dataframe containing patient data
@@ -242,23 +245,21 @@ def aggregate_data(
 
     # transform dataframe into long form and count heads
     cohort_long = cohort_wide.melt(
-        id_vars=column_attributes + ["ukrdcid"],
+        id_vars=[*column_attributes, "ukrdcid"],
         value_vars=row_attributes,
         var_name="attribute",
         value_name="variable",
     )
     cohort_long = (
         cohort_long.groupby(
-            ["attribute", "variable"] + column_attributes,
+            ["attribute", "variable", *column_attributes],
             dropna=False,
         )
         .agg({"ukrdcid": "nunique"})
         .reset_index()
     )
 
-    cohort_long = cohort_long.rename(columns={"ukrdcid": "count"})
-
-    return cohort_long
+    return cohort_long.rename(columns={"ukrdcid": "count"})
 
 
 # NHS digital gender map

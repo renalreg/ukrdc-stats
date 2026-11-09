@@ -30,7 +30,7 @@ CENTRE = "RFRAT"
 
 
 def _fake_main_satellite_centres(
-    session: object, cohort: pd.DataFrame, **kwargs: object
+    _session: object, cohort: pd.DataFrame, **_kwargs: object
 ) -> pd.DataFrame:
     # skip the FacilityRelationship lookup and map 1:1
     cohort["centre_code"] = cohort["sendingfacility"]

@@ -1,7 +1,8 @@
-"""Module contains the queries to generate dataframes from raw ukrdc data with
-minimal processing. Queries that can feasibly be empty should be generated
-from the pandera schema. Queries which cannot feasibly be empty should return
-an empty cohort error.
+"""Queries generating dataframes from raw ukrdc data with minimal processing.
+
+Queries that can feasibly be empty should be generated from the pandera
+schema. Queries which cannot feasibly be empty should raise an empty cohort
+error.
 
 Todo:
 - Expand validation via pandera schemas
@@ -52,8 +53,7 @@ def query_krt_prevalent(
     recovery_window: dt.timedelta = dt.timedelta(days=90),
     sending_extract: str = "UKRDC",
 ) -> krt_query_prevalent_schema:
-    """Core query containing all of the data from the ukrdc database
-    necessary to generate a prevalent krt cohort.
+    """Core query with the ukrdc data needed for a prevalent KRT cohort.
 
     Returns:
         krt_query_prevalent_schema: Patient cohort dataframe
@@ -122,10 +122,16 @@ def query_krt_incident(
     sending_extract: str = "UKRDC",
     ukrdcids: list[str] | None = None,
 ) -> krt_base_schema:
-    """Core query containing all of the data from the ukrdc database
-    necessary to generate an incident krt cohort.
+    """Core query with the ukrdc data needed for an incident KRT cohort.
 
     Args:
+        session (Session): UKRDC session.
+        centre_code (str): Renal centre code.
+        end (dt.datetime): End of the incidence window.
+        start (dt.datetime): Start of the incidence window.
+        recovery_window (dt.timedelta): Treatments within this window of the
+            prevalence point are included so timelines chain correctly.
+        sending_extract (str): Sending extract to filter patient records by.
         ukrdcids (Optional[list[str]]): Restrict returned treatments to these
             ukrdcids. The filter is applied on the outer query so all
             treatment rows for a matching patient are kept intact for
@@ -291,7 +297,7 @@ def query_krt_incident(
 
 @pa.check_output(demog_base_schema)
 def facility_demographics(session: Session, facility_code: str) -> krt_base_schema:
-    """Core query to extract demographic information
+    """Core query to extract demographic information.
 
     Args:
         session (Session): _description_
@@ -320,13 +326,7 @@ def facility_demographics(session: Session, facility_code: str) -> krt_base_sche
     )
     data = session.execute(query).all()
 
-    if data:
-        demographics = pd.DataFrame(data)
-    else:
-        print(f"Warning no demographics extracted for facility {facility_code}")
-        demographics = demog_base_schema.empty()
-
-    return demographics
+    return pd.DataFrame(data) if data else demog_base_schema.empty()
 
 
 @pa.check_output(ckd_ukrdc_base_schema)
@@ -336,6 +336,18 @@ def query_ckd_ukrdc(
     prevalence_point: dt.datetime,
     extract_all: bool = False,
 ) -> ckd_ukrdc_base_schema:
+    """Query the ukrdc for the raw prevalent CKD cohort.
+
+    Args:
+        session (Session): UKRDC session.
+        centre (str): Renal centre code.
+        prevalence_point (dt.datetime): Point the cohort is calculated at.
+        extract_all (bool): Keep every matching record instead of the most
+            recent per patient.
+
+    Returns:
+        ckd_ukrdc_base_schema: Patient cohort dataframe.
+    """
     # Create an alias for Treatment to join on itself later
     Treatment2 = aliased(Treatment)
 
@@ -511,11 +523,12 @@ def query_ckd_treatment_archive(
     """V5 corrections for ckd treatments in the archive.
 
     Args:
-        facility (str): _description_
-        prevalence_point (dt.datetime): _description_
+        archive_session (Session): XML archive database session.
+        facility (str): Renal centre code.
+        prevalence_point (dt.datetime): Point the cohort is calculated at.
 
     Returns:
-        ckd_archive_base_schema: _description_
+        ckd_treatment_archive_base_schema: Archive treatment records.
     """
     ckd_not_rrt_codes = ["901", "902", "903"]
     treatments_query = (
@@ -555,9 +568,13 @@ def query_ckd_treatment_archive(
 
 
 @pa.check_output(ckd_ukrdc_base_schema)
-def query_ckd(session: Session, facility_code: str, prevalence_point: dt.datetime):
-    """Function returns the base query which forms the basis of the ckd cohort.
-    This includes data from the ukrdc with corrections from the removed xml_archive database.
+def query_ckd(
+    session: Session, facility_code: str, prevalence_point: dt.datetime
+) -> ckd_ukrdc_base_schema:
+    """Return the base query which forms the basis of the ckd cohort.
+
+    Includes data from the ukrdc with corrections from the removed
+    xml_archive database.
     """
     # query the data in the ukrdc database
     ckd_ukrdc = query_ckd_ukrdc(session, facility_code, prevalence_point)
@@ -587,38 +604,24 @@ def query_ckd(session: Session, facility_code: str, prevalence_point: dt.datetim
         suffixes=("", "_archive"),
     )
 
-    ckd_ukrdc_corrected.loc[
-        ckd_ukrdc_corrected.admitreasoncode_archive.notnull(), "admitreasoncode"
-    ] = ckd_ukrdc_corrected.loc[
-        ckd_ukrdc_corrected.admitreasoncode_archive.notnull(), "admitreasoncode_archive"
+    has_archive = ckd_ukrdc_corrected.admitreasoncode_archive.notna()
+
+    ckd_ukrdc_corrected.loc[has_archive, "admitreasoncode"] = ckd_ukrdc_corrected.loc[
+        has_archive, "admitreasoncode_archive"
     ]
 
-    ckd_ukrdc_corrected.loc[
-        ckd_ukrdc_corrected.admitreasoncode_archive.notnull(), "admitreasoncodestd"
-    ] = ckd_ukrdc_corrected.loc[
-        ckd_ukrdc_corrected.admitreasoncode_archive.notnull(),
-        "admitreasoncodestd_archive",
+    ckd_ukrdc_corrected.loc[has_archive, "admitreasoncodestd"] = (
+        ckd_ukrdc_corrected.loc[has_archive, "admitreasoncodestd_archive"]
+    )
+
+    ckd_ukrdc_corrected.loc[has_archive, "admitreasondesc"] = ckd_ukrdc_corrected.loc[
+        has_archive, "admitreasondesc_archive"
     ]
 
-    ckd_ukrdc_corrected.loc[
-        ckd_ukrdc_corrected.admitreasoncode_archive.notnull(), "admitreasoncode"
-    ] = ckd_ukrdc_corrected.loc[
-        ckd_ukrdc_corrected.admitreasoncode_archive.notnull(), "admitreasoncode_archive"
-    ]
-
-    ckd_ukrdc_corrected.loc[
-        ckd_ukrdc_corrected.admitreasoncode_archive.notnull(), "admitreasondesc"
-    ] = ckd_ukrdc_corrected.loc[
-        ckd_ukrdc_corrected.admitreasoncode_archive.notnull(), "admitreasondesc_archive"
-    ]
-
-    ckd_ukrdc_corrected.drop(
+    return ckd_ukrdc_corrected.drop(
         columns=[
             "admitreasoncode_archive",
             "admitreasoncodestd_archive",
             "admitreasondesc_archive",
         ],
-        inplace=True,
     )
-
-    return ckd_ukrdc_corrected

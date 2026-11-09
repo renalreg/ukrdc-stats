@@ -1,8 +1,8 @@
-"""Shared functions which turn the long-format output of aggregate_data into the
-Labelled2d models served by the API. Both the KRT and CKD calculators use
-these so the pivot logic only lives in one place.
-"""
+"""Shared builders turning long-format aggregate_data output into Labelled2d models.
 
+Both the KRT and CKD calculators use these so the pivot logic only lives in
+one place.
+"""
 
 import pandas as pd
 
@@ -58,14 +58,13 @@ def build_labelled2d(
         ),
         data=Labelled2dData(
             x=[str(label) for label in counts.index],
-            y=[int(count) for count in counts.values],
+            y=[int(count) for count in counts.to_numpy()],
         ),
     )
 
 
 def under_maintenance(title: str) -> Labelled2d:
-    """Placeholder for stats which have been retired but whose fields are kept
-    for API compatibility.
+    """Placeholder for retired stats whose fields are kept for API compatibility.
 
     Args:
         title (str): Title of the retired statistic.

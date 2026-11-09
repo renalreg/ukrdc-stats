@@ -1,6 +1,7 @@
-"""Base cohort functions
+"""Base cohort functions.
+
 These functions define a set of core shared definitions which allow the
-generation of cohorts from the ukrdc database to
+generation of cohorts from the ukrdc database.
 """
 
 import datetime as dt
@@ -23,8 +24,13 @@ from ukrdc_stats.utils.data import egfr as calculate_egfr
 from ukrdc_stats.validation.validate import validate_centre
 
 
-def ckd_incident(session: Session, facility: str, end: dt.datetime, start: dt.datetime):
-    pass
+def ckd_incident(
+    session: Session,
+    facility: str,
+    end: dt.datetime,
+    start: dt.datetime,
+) -> None:
+    """Placeholder for an incident CKD cohort; not yet implemented."""
 
 
 @pa.check_output(ckd_prevalent_schema)
@@ -37,7 +43,7 @@ def ckd_prevalent(
 
     Args:
         session (Session): UKRDC session
-        facility (str): Facility code
+        centre (str): Renal centre code
         prevalence_point (dt.datetime): Prevalence point
     """
     # Get base data
@@ -107,15 +113,21 @@ def ckd_prevalent(
     return cohort[cohort.centre_code == centre]
 
 
-def _chain_treatments(base_cohort, recovery_window: dt.timedelta):
-    """Args:
-        base_cohort (_type_): _description_
-        recovery_window (dt.timedelta): _description_
+def _chain_treatments(
+    base_cohort: pd.DataFrame, recovery_window: dt.timedelta
+) -> pd.DataFrame:
+    """Order each patient's treatments and flag where new timelines begin.
+
+    Args:
+        base_cohort (pd.DataFrame): Treatment records for the cohort.
+        recovery_window (dt.timedelta): Gaps smaller than this are absorbed
+            into the surrounding timeline.
 
     Returns:
-        _type_: _description_
+        pd.DataFrame: Cohort with timeline_order, prev_* and new_timeline
+            columns added.
     """
-    base_cohort.sort_values(by=["ukrdcid", "fromtime", "totime"], inplace=True)
+    base_cohort = base_cohort.sort_values(by=["ukrdcid", "fromtime", "totime"])
     base_cohort["timeline_order"] = base_cohort.groupby("ukrdcid").cumcount()
 
     # Get previous treatment's time bounds (within each patient)
@@ -142,11 +154,12 @@ def _chain_treatments(base_cohort, recovery_window: dt.timedelta):
 
 
 def _clean_totime(base_cohort: pd.DataFrame) -> pd.DataFrame:
-    """The current record will typically be open (totime is NaT). However it's
-    more convenient to treat these as infinities, for computing equalities.
-    Function also cleans totimes where a date of death is present. This
-    function could further be expanded to handle cases where the record hasn't
-    been closed.
+    """Fill open-ended and post-death totimes with a far-future sentinel.
+
+    The current record will typically be open (totime is NaT); treating
+    these as infinities makes computing equalities easier. The function
+    also cleans totimes where a date of death is present, and could be
+    expanded to handle records that were never closed.
 
     Args:
         base_cohort (pd.DataFrame): Base cohort dataframe
@@ -220,7 +233,9 @@ def _clean_equal_records(base_cohort: pd.DataFrame) -> pd.DataFrame:
 
 
 def _label_timeline(krt_incident_cohort: pd.DataFrame) -> pd.DataFrame:
-    """Args:
+    """Label each record with its treatment timeline bounds and length.
+
+    Args:
         krt_incident_cohort (pd.DataFrame): KRT incident cohort dataframe
 
     Returns:
@@ -236,7 +251,7 @@ def _label_timeline(krt_incident_cohort: pd.DataFrame) -> pd.DataFrame:
         .sort_values("fromtime", ascending=False)
         .drop_duplicates("ukrdcid", keep="first")
     )
-    timeline_start.rename(columns={"fromtime": "timeline_start"}, inplace=True)
+    timeline_start = timeline_start.rename(columns={"fromtime": "timeline_start"})
 
     timeline_stop = (
         krt_incident_cohort.groupby("ukrdcid", as_index=False)["totime"]
@@ -255,17 +270,15 @@ def _label_timeline(krt_incident_cohort: pd.DataFrame) -> pd.DataFrame:
     return krt_incident_cohort
 
 
-def _reassign_transplants(singular_cohort):
-    """Transplants should be reassigned to their supervision centre as opposed to
-    the transplanting centre.
+def _reassign_transplants(singular_cohort: pd.DataFrame) -> pd.DataFrame:
+    """Reassign transplants to the supervision, not transplanting, centre.
 
     Todo:
-    1) How to handle unsuccessful transplants?
-    2) How to handle patients with no ckd centre?
+        1) How to handle unsuccessful transplants?
+        2) How to handle patients with no ckd centre?
 
     Args:
         singular_cohort (pd.DataFrame): Singular cohort dataframe
-        full_cohort (pd.DataFrame): Full cohort dataframe
 
     Returns:
         pd.DataFrame: Singular cohort dataframe with transplants reassigned
@@ -288,11 +301,14 @@ def _reassign_transplants(singular_cohort):
 
 
 def _label_incident(
-    krt_new_cohort, recovery_window: dt.timedelta = dt.timedelta(days=90)
-):
-    """The UKRR incident cohort counts patients who are recieving acute and
-    chronic dialysis differently. This function attempts to apply this
-    discrimination to ukrdc patients.
+    krt_new_cohort: pd.DataFrame,
+    recovery_window: dt.timedelta = dt.timedelta(days=90),
+) -> pd.DataFrame:
+    """Apply the UKRR acute/chronic dialysis discrimination to UKRDC patients.
+
+    Args:
+        krt_new_cohort (pd.DataFrame): Incident cohort with timeline labels.
+        recovery_window (dt.timedelta): Window used to decide chronic status.
 
     Returns:
         pd.DataFrame: DataFrame with acute/chronic labels
@@ -322,7 +338,8 @@ def _label_incident(
         & krt_new_cohort.ckd_centre.notna()
     ].ukrdcid.unique()
 
-    # Patients who's last treatment is a transfer out of type that implies they remain on treatment
+    # Patients whose last treatment is a transfer out of a type that implies
+    # they remain on treatment
     # TODO: include 85, 86? condition on length of life?
     # Exclude patients within this group with transfer in code?
     group4_ids = krt_new_cohort[
@@ -351,17 +368,21 @@ def krt_incident(
     sending_extract: str = "UKRDC",
     ukrdcids: list[str] | None = None,
 ) -> krt_incident_schema:
-    """Get the incident KRT cohort for a given renal centre, it's satellites and date range.
+    """Get the incident KRT cohort for a centre, its satellites and date range.
 
     Args:
         session (Session): UKRDC session
         centre (str): Renal centre code
         end_date (dt.datetime): End date
-        start_date (Optional[dt.datetime], optional): Start date. If not set it will default to a year prior to the end date.
-        recovery_window (dt.timedelta, optional): Time window for recovery used to determine chronic status. Defaults to 90 days.
-        sending_extract (str, optional): Sending extract to filter patient records by, e.g. "UKRR". Defaults to "UKRDC".
-        ukrdcids (Optional[list[str]], optional): Restrict the cohort to these ukrdcids (within the centre's eligible patients). Defaults to None.
-
+        start_date (Optional[dt.datetime], optional): Start date. If not
+            set it defaults to a year prior to the end date.
+        recovery_window (dt.timedelta, optional): Time window for recovery
+            used to determine chronic status. Defaults to 90 days.
+        sending_extract (str, optional): Sending extract to filter patient
+            records by, e.g. "UKRR". Defaults to "UKRDC".
+        ukrdcids (Optional[list[str]], optional): Restrict the cohort to
+            these ukrdcids (within the centre's eligible patients).
+            Defaults to None.
     """
     validate_centre(session, centre)
 
@@ -407,7 +428,6 @@ def krt_incident(
         .drop_duplicates("ukrdcid", keep="first")
     )
 
-    # singular_incident = _label_incident_old(base_cohort, start_date, end_date, recovery_window)
     # TODO: update main_satellite_centres logic
     singular_cohort = main_satellite_centres(
         session, singular_cohort, outlier_mapping_mode="otherise"
@@ -432,7 +452,8 @@ def krt_prevalent(
         session (Session): UKRDC session
         facility (str): Facility code
         prevalence_point (dt.datetime): Prevalence point
-        sending_extract (str, optional): Sending extract to filter patient records by, e.g. "UKRR". Defaults to "UKRDC".
+        sending_extract (str, optional): Sending extract to filter patient
+            records by, e.g. "UKRR". Defaults to "UKRDC".
 
     Returns:
         krt_prevalent_schema: Prevalent KRT cohort
@@ -445,7 +466,8 @@ def krt_prevalent(
         (base_cohort["dialtplt"] == "HD") & (base_cohort["qbl05"] == "HOME"), "dialtplt"
     ] = "HHD"
 
-    # TODO: more logic around recovey window and treatment relationship to prevalence point
+    # TODO: more logic around recovery window and treatment relationship
+    # to the prevalence point
     singular_cohort = (
         base_cohort[
             (base_cohort.fromtime <= prevalence_point)
@@ -458,6 +480,4 @@ def krt_prevalent(
     singular_cohort = main_satellite_centres(
         session, singular_cohort, outlier_mapping_mode="otherise"
     )
-    singular_cohort = _reassign_transplants(singular_cohort)
-
-    return singular_cohort
+    return _reassign_transplants(singular_cohort)

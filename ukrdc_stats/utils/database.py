@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any
 
 from sqlalchemy import create_engine
-from sqlalchemy.engine import Engine, URL
+from sqlalchemy.engine import URL, Engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from ukrdc_stats.utils.cache import cachedsessionmaker
@@ -40,8 +40,8 @@ def load_ukrdc_url_from_config(server_name: str, keypath: str) -> URL:
         db_config = ukrdc_config.get(server_name)
 
     if not isinstance(db_config, dict):
-        # config shape check, not a type error on a call
-        raise ValueError(
+        # missing config entry, not a type error on a call argument
+        raise ValueError(  # noqa: TRY004
             f"Server configuration for {server_name} not found in UKRDC config"
         )
 
@@ -84,8 +84,7 @@ def get_sessionmaker(
 
 
 def get_archive_sessionmaker(session: Session) -> sessionmaker[Session]:
-    """Take a UKRDC session and generate an xml archive session on the same
-    database cluster.
+    """Generate an xml archive sessionmaker on the same cluster as a session.
 
     Args:
         session (Session): session for ukrdc database
