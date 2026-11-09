@@ -1,7 +1,9 @@
-from typing import Optional
+"""Labellers attaching demographics (age, sex, ethnicity) to a cohort."""
+
+import datetime as dt
+from typing import Any
 
 import pandas as pd
-import datetime as dt
 from sqlalchemy.orm import Session
 
 from ukrdc_stats.exceptions import MissingColumnError
@@ -10,14 +12,24 @@ from ukrdc_stats.utils.data import GENDER_GROUP_MAP, map_codes
 
 
 def _fetch_missing_demog(
-    patient_cohort: pd.DataFrame, column: str, session: Optional[Session]
+    patient_cohort: pd.DataFrame, column: str, session: Session | None
 ) -> pd.DataFrame:
-    """
-    Looks up demographic data via query_demog and merges it onto the cohort
-    when a required column is absent. Falls back to raising if no session is
-    available to query with.
-    """
+    """Fetch demographic data when a required column is absent.
 
+    Looks the data up via query_demog and merges it onto the cohort.
+
+    Args:
+        patient_cohort (pd.DataFrame): Cohort being labelled.
+        column (str): The column which was found missing.
+        session (Session | None): UKRDC session to query demographics with.
+
+    Returns:
+        pd.DataFrame: The cohort merged with the missing demographic columns.
+
+    Raises:
+        MissingColumnError: If the column is absent and no session is
+            available to fetch demographics with.
+    """
     if session is None or "pid" not in patient_cohort.columns:
         raise MissingColumnError(f"Patient cohort must contain '{column}' column")
 
@@ -32,20 +44,31 @@ def _fetch_missing_demog(
 def age(
     patient_cohort: pd.DataFrame,
     reference_date: dt.datetime,
-    bins: dict = {
-        "bins": [0, 18, 35, 55, 75, 150],
-        "labels": ["Under 18", "18-34", "35-54", "55-74", "75+"],
-    },
-    session: Optional[Session] = None,
+    bins: dict[str, Any] | None = None,
+    session: Session | None = None,
 ) -> pd.DataFrame:
-    """
-    Calculate age groups for a patient cohort.
+    """Calculate age groups for a patient cohort.
 
     Args:
-        patient_cohort (pd.DataFrame): DataFrame containing patient data with 'birth_date' column.
+        patient_cohort (pd.DataFrame): DataFrame containing patient data with
+            a 'birthtime' column.
         reference_date (dt.datetime): Date to calculate ages from.
-        bins (_type_, optional): Dictionary with 'bins' and 'labels' keys. Defaults to { "bins" : [0, 18, 35, 55, 75, 150], "labels" :["Under 18", "18-34", "35-54", "55-74", ">=75"] }.
+        bins (dict[str, Any], optional): Dictionary with 'bins' and 'labels'
+            keys. Defaults to the standard UKRR age groups.
+        session (Session | None, optional): UKRDC session used to fetch
+            birthtime when the column is missing. Defaults to None.
+
+    Returns:
+        pd.DataFrame: DataFrame with 'decimalage' and 'age' columns added.
+
+    Raises:
+        ValueError: If the cohort is already labelled with age.
     """
+    if bins is None:
+        bins = {
+            "bins": [0, 18, 35, 55, 75, 150],
+            "labels": ["Under 18", "18-34", "35-54", "55-74", "75+"],
+        }
 
     if "birthtime" not in patient_cohort.columns:
         patient_cohort = _fetch_missing_demog(patient_cohort, "birthtime", session)
@@ -68,13 +91,15 @@ def age(
 
 def sex(
     patient_cohort: pd.DataFrame,
-    session: Optional[Session] = None,
+    session: Session | None = None,
 ) -> pd.DataFrame:
-    """
-    Apply gender group mapping to patient cohort.
+    """Apply gender group mapping to patient cohort.
 
     Args:
-        patient_cohort (pd.DataFrame): DataFrame containing patient data with 'gender' column.
+        patient_cohort (pd.DataFrame): DataFrame containing patient data
+            with a 'gender' column.
+        session (Session | None, optional): UKRDC session used to fetch
+            gender when the column is missing. Defaults to None.
 
     Returns:
         pd.DataFrame: DataFrame with 'sex' column added.
@@ -93,11 +118,11 @@ def ethnicity(
     patient_cohort: pd.DataFrame,
     session: Session,
 ) -> pd.DataFrame:
-    """
-    Apply UKKA ethnic grouping to patient cohort.
+    """Apply UKKA ethnic grouping to patient cohort.
 
     Args:
-        patient_cohort (pd.DataFrame): DataFrame containing patient data with 'ethnicgroupcode' column.
+        patient_cohort (pd.DataFrame): DataFrame containing patient data
+            with an 'ethnicgroupcode' column.
         session (Session): UKRDC session used to look up the code mapping.
 
     Returns:

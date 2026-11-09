@@ -1,5 +1,4 @@
-"""
-Transparent query-result caching for SQLAlchemy sessions.
+"""Transparent query-result caching for SQLAlchemy sessions.
 
 Design, in plain terms:
   - CacheSession.execute() checks the cache BEFORE running the query.
@@ -24,31 +23,31 @@ Known limitation (read before using with ORM entities):
 
 import hashlib
 import json
-from contextlib import contextmanager
+import os
+from collections.abc import Iterator, Sequence
+from contextlib import AbstractContextManager, contextmanager
 from pathlib import Path
 from typing import Any
 
+import portalocker
 from dogpile.cache import make_region
 from dogpile.cache.api import NO_VALUE
+from dotenv import dotenv_values
 from sqlalchemy.engine import URL
 from sqlalchemy.orm import Session, sessionmaker
-
-import portalocker
-from dotenv import dotenv_values
-
 
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
 
 config_from_env = dotenv_values(".env")
-CONFIG = {
-    "expiration": int(config_from_env.get("CACHE_EXPIRATION", 3600)),
-    "backend": config_from_env.get("CACHE_BACKEND", "file"),
-    "cache_dir": Path(config_from_env.get("CACHE_DIR", ".do_not_commit"))
+CONFIG: dict[str, Any] = {
+    "expiration": int(config_from_env.get("CACHE_EXPIRATION") or 3600),
+    "backend": config_from_env.get("CACHE_BACKEND") or "file",
+    "cache_dir": Path(config_from_env.get("CACHE_DIR") or ".do_not_commit")
     / "query_cache",
-    "redis_host": config_from_env.get("REDIS_HOST", "localhost"),
-    "redis_port": int(config_from_env.get("REDIS_PORT", 6379)),
+    "redis_host": config_from_env.get("REDIS_HOST") or "localhost",
+    "redis_port": int(config_from_env.get("REDIS_PORT") or 6379),
 }
 
 
@@ -60,53 +59,68 @@ CONFIG = {
 class WindowsFileLock:
     """Cross-platform file lock using portalocker (Windows-compatible)."""
 
-    def __init__(self, filename: str):
+    def __init__(self, filename: str) -> None:
+        """Create a lock bound to a lockfile path; the file is opened lazily."""
         self.filename = filename
-        self._filedesc = None
+        self._filedesc: int | None = None
 
     def _open_lockfile(self) -> int:
-        import os
-
         return os.open(self.filename, os.O_CREAT | os.O_RDWR)
 
     def acquire_read_lock(self, wait: bool) -> bool:
+        """Take a shared (read) lock.
+
+        Returns False instead of blocking when wait=False.
+        """
         if self._filedesc is None:
             self._filedesc = self._open_lockfile()
         flag = portalocker.LOCK_SH | (0 if wait else portalocker.LOCK_NB)
         try:
             portalocker.lock(self._filedesc, flag)
-            return True
         except portalocker.LockException:
             return False
+        else:
+            return True
 
     def acquire_write_lock(self, wait: bool) -> bool:
+        """Take an exclusive (write) lock.
+
+        Returns False instead of blocking when wait=False.
+        """
         if self._filedesc is None:
             self._filedesc = self._open_lockfile()
         flag = portalocker.LOCK_EX | (0 if wait else portalocker.LOCK_NB)
         try:
             portalocker.lock(self._filedesc, flag)
-            return True
         except portalocker.LockException:
             return False
+        else:
+            return True
 
     def release_read_lock(self) -> None:
+        """Release the shared (read) lock if held."""
         if self._filedesc is not None:
             portalocker.unlock(self._filedesc)
 
     def release_write_lock(self) -> None:
+        """Release the exclusive (write) lock if held."""
         if self._filedesc is not None:
             portalocker.unlock(self._filedesc)
 
     def acquire(self, wait: bool = True) -> bool:
+        """Lock the file exclusively, satisfying the lock-interface dogpile expects."""
         return self.acquire_write_lock(wait)
 
     def release(self) -> None:
+        """Release the lock, satisfying the lock-interface dogpile expects."""
         self.release_write_lock()
 
-    def read(self):
+    def read(self) -> AbstractContextManager["WindowsFileLock"]:
+        """Context manager holding a shared lock for the duration of the block."""
+
         @contextmanager
-        def _read_ctx():
-            self.acquire_read_lock(True)
+        def _read_ctx() -> Iterator["WindowsFileLock"]:
+            self.acquire_read_lock(wait=True)
             try:
                 yield self
             finally:
@@ -114,10 +128,12 @@ class WindowsFileLock:
 
         return _read_ctx()
 
-    def write(self):
+    def write(self) -> AbstractContextManager["WindowsFileLock"]:
+        """Context manager holding an exclusive lock for the duration of the block."""
+
         @contextmanager
-        def _write_ctx():
-            self.acquire_write_lock(True)
+        def _write_ctx() -> Iterator["WindowsFileLock"]:
+            self.acquire_write_lock(wait=True)
             try:
                 yield self
             finally:
@@ -133,8 +149,9 @@ class WindowsFileLock:
 _cache_region = None
 
 
-def _get_cache_region(config: dict) -> Any:
-    global _cache_region
+def _get_cache_region(config: dict[str, Any]) -> Any:
+    # lazy singleton: the global is the point of the pattern
+    global _cache_region  # noqa: PLW0603
     if _cache_region is not None:
         return _cache_region
 
@@ -175,7 +192,7 @@ def _get_cache_region(config: dict) -> Any:
 # ---------------------------------------------------------------------------
 
 
-def _generate_cache_key(url: URL, statement: Any, params: dict | None) -> str:
+def _generate_cache_key(url: URL, statement: Any, params: dict[str, Any] | None) -> str:
     """Unique key per (database, compiled SQL incl. literal values, params).
 
     Bind values embedded in the statement itself (e.g. `User.id == 5`) are
@@ -213,10 +230,10 @@ class _ListResult:
     which is single-use) since it just wraps a list.
     """
 
-    def __init__(self, rows: list):
+    def __init__(self, rows: Sequence[Any]) -> None:
         self._rows = rows
 
-    def all(self) -> list:
+    def all(self) -> list[Any]:
         return list(self._rows)
 
     def first(self) -> Any:
@@ -240,10 +257,10 @@ class _ListResult:
         row = self.first()
         return row[0] if row is not None else None
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[Any]:
         return iter(self._rows)
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self._rows)
 
 
@@ -253,20 +270,25 @@ class _ListResult:
 
 
 class CacheSession:
-    """Wraps a SQLAlchemy Session; execute() checks the cache before
-    hitting the database. Everything else passes through untouched.
+    """Wraps a SQLAlchemy Session so execute() checks the cache first.
+
+    On a cache hit the database is never touched; everything else passes
+    through to the wrapped session untouched.
     """
 
     def __init__(self, session: Session) -> None:
+        """Wrap an open Session, capturing its database URL for cache keys."""
         self._session = session
-        self._url = session.bind.url
+        self._url = session.bind.url  # type: ignore[union-attr]  # sessionmaker-bound sessions always have an Engine
 
     def __getattr__(self, name: str) -> Any:
+        """Delegate unknown attributes to the wrapped Session."""
         return getattr(self._session, name)
 
     def execute(
-        self, statement: Any, params: dict | None = None, **kwargs: Any
+        self, statement: Any, params: dict[str, Any] | None = None, **kwargs: Any
     ) -> _ListResult:
+        """Return cached rows for the statement, or run and cache it on a miss."""
         key = _generate_cache_key(self._url, statement, params)
         region = _get_cache_region(CONFIG)
 
@@ -279,20 +301,24 @@ class CacheSession:
         return _ListResult(rows)
 
     def __enter__(self) -> "CacheSession":
+        """Enter the wrapped session's context and return the proxy."""
         self._session.__enter__()
         return self
 
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+        """Close the wrapped session on context exit."""
         self._session.close()
 
 
-class CachedSessionMaker(sessionmaker):
+class CachedSessionMaker(sessionmaker[Session]):  # type: ignore[type-arg]  # sessionmaker is generic; our __call__ returns the CacheSession proxy regardless
     """Drop-in replacement for sessionmaker that returns CacheSession instances."""
 
-    def __call__(self, **local_kw: Any) -> CacheSession:
+    def __call__(self, **local_kw: Any) -> CacheSession:  # type: ignore[override]  # CacheSession proxies Session via __getattr__, so this is the intended duck-typed substitution
+        """Create a Session and return it wrapped in a CacheSession."""
         session = super().__call__(**local_kw)
         return CacheSession(session)
 
 
-def cachedsessionmaker(**local_kw: Any):
+def cachedsessionmaker(**local_kw: Any) -> CachedSessionMaker:
+    """Factory matching sessionmaker() but returning a CachedSessionMaker."""
     return CachedSessionMaker(**local_kw)

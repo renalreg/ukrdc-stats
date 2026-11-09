@@ -10,7 +10,6 @@ def _(mo):
     # Dialysis patients prevalent for one year or more
     This notebook seeks to explore the prevelant dialysis patients who have been on dialysis modalities for at least a year.
     """)
-    return
 
 
 @app.cell

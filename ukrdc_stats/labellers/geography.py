@@ -1,21 +1,20 @@
-import pandas as pd
-from sqlalchemy.orm import Session
-from sqlalchemy import select
+"""Labellers attaching geography: IMD deprivation and centre mappings."""
 
-from ukrdc_stats.labellers.query import (
-    query_postcodes,
-    query_paed_centres,
-    query_ons_postcode_data,
-)
+import pandas as pd
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 from ukrdc_sqla.ukrdc import FacilityRelationship
+
 from ukrdc_stats.exceptions import MissingColumnError
+from ukrdc_stats.labellers.query import (
+    query_ons_postcode_data,
+    query_paed_centres,
+    query_postcodes,
+)
 
 
 def imd(session: Session, patient_cohort: pd.DataFrame) -> pd.DataFrame:
-    """
-    Calculate the Index of Multiple Deprivation (IMD) for each patient.
-    """
-
+    """Calculate the Index of Multiple Deprivation (IMD) for each patient."""
     # query patient postcodes
     postcodes = query_postcodes(session, patient_cohort["pid"].tolist())
     postcodes["postcode_norm"] = (
@@ -37,16 +36,14 @@ def imd(session: Session, patient_cohort: pd.DataFrame) -> pd.DataFrame:
         how="left",
     )
     del imd_data
-    postcodes.drop(columns=["postcode_norm", "pcd7_norm", "pcd7"], inplace=True)
+    postcodes = postcodes.drop(columns=["postcode_norm", "pcd7_norm", "pcd7"])
 
-    patient_cohort = patient_cohort.merge(
+    return patient_cohort.merge(
         postcodes[["pid", "imddecile"]],
         left_on="pid",
         right_on="pid",
         how="left",
     )
-
-    return patient_cohort
 
 
 def main_satellite_centres(
@@ -55,11 +52,12 @@ def main_satellite_centres(
     outlier_mapping_mode: str = "passthrough",
     drop_outliers: bool = False,
 ) -> pd.DataFrame:
-    """
-    This function does the heavy lifting of transforming sending facilities and
-    healthcarefacility codes into centre codes and satellite codes. It takes
-    the unaggregated data as the input. The best way to do this still needs
-    debating in the near term we will implement the following behaviour:
+    """Transform facility codes into centre and satellite codes.
+
+    Does the heavy lifting of turning sending facilities and
+    healthcarefacility codes into centre codes and satellite codes. It
+    takes the unaggregated data as the input. The best way to do this still
+    needs debating; in the near term we implement the following behaviour:
 
     1. For site sharing a feed the sendingfacility (centre_code) will be
     replaced with the main centre code by mapping back from the satellite code
@@ -69,10 +67,7 @@ def main_satellite_centres(
     replaced with the sendingfacility.
     4. For feedshare sites there will be way of determining which of the sites
     is a main unit so they will be dropped from the dataframe.
-
-
     """
-
     for column in ("sendingfacility", "healthcarefacilitycode"):
         if column not in patient_cohort.columns:
             raise MissingColumnError(f"patient_cohort is missing column '{column}'")
@@ -91,8 +86,8 @@ def main_satellite_centres(
         how="left",
     )
     patient_cohort["centre_code_mapped"] = patient_cohort["childfacilitycode"]
-    patient_cohort.drop(
-        columns=["parentfacilitycode", "childfacilitycode"], inplace=True
+    patient_cohort = patient_cohort.drop(
+        columns=["parentfacilitycode", "childfacilitycode"]
     )
 
     # feed share satellites
@@ -126,14 +121,13 @@ def main_satellite_centres(
         & patient_cohort["centre_code_mapped"].isna()
     )
     patient_cohort = patient_cohort[~unassigned]
-    patient_cohort.drop(
+    patient_cohort = patient_cohort.drop(
         columns=[
             "childfacilitycode_satellite",
             "parentfacilitycode_satellite",
             "parentfacilitycode",
             "childfacilitycode",
         ],
-        inplace=True,
     )
 
     # map non-feedshare main units
@@ -145,7 +139,8 @@ def main_satellite_centres(
         "sendingfacility",
     ]
 
-    # Map non feed share satellites - this will map satellites to their main unit regardless of sendingfacility
+    # Map non feed share satellites - this maps satellites to their main
+    # unit regardless of sendingfacility
     satellite_map = facility_relationships[
         facility_relationships["relationshiptype"] == "MAIN-SATELLITE"
     ][["parentfacilitycode", "childfacilitycode"]]
@@ -192,19 +187,17 @@ def main_satellite_centres(
     patient_cohort["satellite_code"] = patient_cohort["healthcarefacilitycode"]
 
     # delete helper columns
-    patient_cohort = patient_cohort.drop(
+    return patient_cohort.drop(
         columns=["parentfacilitycode", "childfacilitycode", "centre_code_mapped"]
     )
 
-    return patient_cohort
-
 
 def adult_paed(session: Session, patient_cohort: pd.DataFrame) -> pd.DataFrame:
-    """
-    Flag if centre is a paediatric centre. For any paed centre that are mapped
-    via the main-satellite model recode paed as main centre.
-    """
+    """Flag if centre is a paediatric centre.
 
+    For any paed centre that is mapped via the main-satellite model, recode
+    paed as the main centre.
+    """
     for column in ("centre_code", "satellite_code"):
         if column not in patient_cohort.columns:
             raise MissingColumnError(f"patient_cohort is missing column '{column}'")

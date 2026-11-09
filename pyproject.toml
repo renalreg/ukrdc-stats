@@ -12,9 +12,9 @@ version = "3.0.0"
 
 
 [tool.poetry.dependencies]
-SQLAlchemy = "^2.0.0" 
-pandas = "^2.2.2" 
-python = "^3.12" 
+SQLAlchemy = "^2.0.0"
+pandas = "^2.2.2"
+python = "^3.12"
 ukrdc-sqla = "^5.2.0"
 psycopg = {extras = ["binary"], version = "^3.2.3"}
 pandera = "^0.30.1"
@@ -26,12 +26,22 @@ portalocker = "^4.4.0"
 
 [tool.poetry.group.test.dependencies]
 # All tests will require the dev dependencies as well
-bandit = "^1.7.4"
 pytest = "^7.1.2"
 pytest-cov = "^4.0.0"
 ruff = "^0.9.2"
 nbstripout = "^0.8.1"
 tox = "^4.24.2"
+# static analysis and safety tooling
+pyright = "^1.1.390"
+pandas-stubs = "^2.2"
+vulture = "^2.14"
+import-linter = "^2.0"
+sqlfluff = "^3.0"
+darglint = "^1.8"
+interrogate = "^1.7"
+pre-commit = "^4.0"
+# property-based testing
+hypothesis = "^6.100"
 
 
 [tool.poetry.group.demo]
@@ -53,8 +63,126 @@ marimo = "^0.24.0"
 build-backend = "poetry.core.masonry.api"
 requires = ["poetry-core>=1.0.0"]
 
-[tool.isort]
-profile = 'black'
+[tool.pyright]
+include = ["ukrdc_stats", "tests"]
+exclude = [".venv", ".tox", "demo", "__marimo__", "scripts"]
+typeCheckingMode = "strict"
 
+# Pragmatic strict: every type-safety rule stays on, but the diagnostics that
+# fire on pandas' dynamic typing rather than on real bugs are switched off
+reportUnknownMemberType = "none"
+reportUnknownArgumentType = "none"
+reportUnknownParameterType = "none"
+reportUnknownVariableType = "none"
+reportUnknownLambdaType = "none"
+reportMissingTypeStubs = "none"
+reportAny = "none"
+reportExplicitAny = "none"
+# dt.timedelta(days=90) style defaults are legitimate here
+reportCallInDefaultInitializer = "warning"
 
+[tool.ruff]
+target-version = "py312"
+extend-exclude = ["demo", "__marimo__"]
 
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # import sorting
+    "B",   # flake8-bugbear (mutable default args etc.)
+    "C4",  # flake8-comprehensions
+    "UP",  # pyupgrade
+    "ANN", # require annotations
+    "ARG", # unused arguments (hallucinated params)
+    "S",   # flake8-bandit security
+    "TRY", # exception antipatterns
+    "EM",  # error message hygiene
+    "RET", # return statement consistency
+    "PD",  # pandas-vet (bans inplace=True etc.)
+    "PTH", # use pathlib
+    "C90", # mccabe complexity
+    "D",   # pydocstyle
+    "RUF", # ruff-specific
+    "PL",  # pylint families
+    "SIM", # code simplification
+    "T20", # no print statements
+    "ERA", # no commented-out code
+    "A",   # no builtin shadowing
+    "FBT", # boolean positional traps
+    "TD",  # TODO discipline
+    "FIX", # FIXME/HACK discipline
+    "SLF", # no private member access across modules
+    "INP", # require __init__.py in packages
+    "PGH", # no blanket type: ignore
+    "RSE", # raised parentheses
+    "FA",  # future annotations compatibility
+]
+ignore = [
+    "EM101",   # f-strings in raise statements are fine
+    "EM102",
+    "TRY003", # long messages in raises are fine
+    "ANN401", # deliberate Any in models is documented
+    "FBT001", # bool positional params kept to avoid API churn
+    "FBT002",
+    "TD002",   # TODOs without an author are fine (research codebase)
+    "TD003",   # TODOs without an issue link are fine (research codebase)
+    "FIX002", # TODO comments are not code
+    "FIX003",
+    "PLR2004", # clinical thresholds (14 days, 90 days...) are domain constants
+]
+
+[tool.ruff.lint.per-file-ignores]
+# asserts and magic values are the point of tests; white-box testing of
+# private functions is deliberate
+"tests/**" = ["S101", "PLR2004", "D", "INP001", "SLF001", "ANN"]
+# live-DB statistical accuracy comparison scripts, not part of the pytest run
+"tests/test_statistical_accuracy/**" = [
+    "ANN", "T201", "ERA001", "PD", "E501", "RET", "C4", "TRY",
+]
+# UI-facing description constants; long prose lines are the point of the file
+"ukrdc_stats/descriptions.py" = ["E501"]
+# extraction scripts keep the basic families only (E W F I B)
+"scripts/**" = [
+    "ANN", "ARG", "S", "TRY", "EM", "RET", "PD", "PTH", "C90", "D", "RUF",
+    "PL", "SIM", "T20", "ERA", "A", "FBT", "TD", "FIX", "SLF", "INP", "PGH",
+    "RSE", "FA", "UP", "C4",
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.mccabe]
+max-complexity = 10
+
+[tool.ruff.lint.pylint]
+max-args = 10
+
+[tool.ruff.lint.flake8-bugbear]
+# timedelta defaults are immutable and safe in argument defaults
+extend-immutable-calls = ["dt.timedelta", "datetime.timedelta"]
+
+[tool.vulture]
+paths = ["ukrdc_stats"]
+whitelist = ["vulture_whitelist.py"]
+
+[tool.importlinter]
+root_packages = ["ukrdc_stats"]
+
+[[tool.importlinter.contracts]]
+name = "Calculator over cohorts over labellers over utils layering"
+type = "layers"
+layers = [
+    "ukrdc_stats.calculators",
+    "ukrdc_stats.cohorts",
+    "ukrdc_stats.labellers",
+    "ukrdc_stats.validation",
+    "ukrdc_stats.utils",
+    "ukrdc_stats.exceptions",
+    "ukrdc_stats.descriptions",
+]
+
+[tool.sqlfluff.core]
+dialect = "postgres"
+templater = "raw"

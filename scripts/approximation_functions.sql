@@ -4,7 +4,7 @@
 BEGIN;
 
 CREATE OR REPLACE FUNCTION pg_temp.incident_cohort(
-    centres text[],
+    centres text [],
     cohort_start date,
     cohort_end date
 )
@@ -114,7 +114,7 @@ $$ LANGUAGE plpgsql;
 -- Returns every treatment row active on the supplied prevalence_point.
 
 CREATE OR REPLACE FUNCTION pg_temp.prevalent_cohort(
-    centres text[],
+    centres text [],
     prevalence_point date
 )
 RETURNS TABLE (

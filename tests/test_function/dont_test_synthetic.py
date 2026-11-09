@@ -21,18 +21,16 @@ pytest.importorskip("hypothesis")
 
 from ukrdc_stats.cohorts.base import (
     krt_incident,
-    krt_prevalent,
 )
 from ukrdc_stats.cohorts.schema import (
     krt_query_incident_schema,
-    krt_query_prevalent_schema,
 )
 
 CENTRE = "RFRAT"
 
 
 def _fake_main_satellite_centres(
-    session: object, cohort: pd.DataFrame, **kwargs: object
+    _session: object, cohort: pd.DataFrame, **_kwargs: object
 ) -> pd.DataFrame:
     # skip the FacilityRelationship lookup and map 1:1
     cohort["centre_code"] = cohort["sendingfacility"]

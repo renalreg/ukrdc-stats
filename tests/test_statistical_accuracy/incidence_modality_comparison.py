@@ -4,6 +4,7 @@ Runs the incident calculator for each (quarter, facility) pair in the
 reference data, groups by modality (collapsing HHD into HD), and writes
 the percentage difference to a CSV in tests/test_statistical_accuracy/output/.
 """
+
 import datetime as dt
 from pathlib import Path
 
@@ -81,10 +82,17 @@ def run_comparison(server: str, ref_csv: Path) -> pd.DataFrame:
                     & (ref_data["quarter_end"] == q_end)
                 ]
                 for _, ref_row in ref_subset.iterrows():
-                    results.append(_make_row(
-                        server, q_start, q_end, ref_row["sendingfacility"],
-                        ref_row["first_modality_type"], int(ref_row["incidence"]), 0,
-                    ))
+                    results.append(
+                        _make_row(
+                            server,
+                            q_start,
+                            q_end,
+                            ref_row["sendingfacility"],
+                            ref_row["first_modality_type"],
+                            int(ref_row["incidence"]),
+                            0,
+                        )
+                    )
                 continue
 
             combined_cohort = pd.concat(all_cohorts, ignore_index=True)
@@ -117,9 +125,17 @@ def run_comparison(server: str, ref_csv: Path) -> pd.DataFrame:
                 ]
                 calc_count = int(match["count"].sum())
 
-                results.append(_make_row(
-                    server, q_start, q_end, facility, modality, ref_count, calc_count,
-                ))
+                results.append(
+                    _make_row(
+                        server,
+                        q_start,
+                        q_end,
+                        facility,
+                        modality,
+                        ref_count,
+                        calc_count,
+                    )
+                )
 
     return pd.DataFrame(results)
 

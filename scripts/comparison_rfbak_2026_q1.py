@@ -1,10 +1,11 @@
-import pandas as pd
 from pathlib import Path
-from sqlalchemy import select, and_
 
-from ukrdc_sqla.ukrdc import PatientRecord, PatientNumber
-from ukrdc_stats.utils.database import get_sessionmaker
+import pandas as pd
 from dotenv import dotenv_values
+from sqlalchemy import and_, select
+from ukrdc_sqla.ukrdc import PatientNumber, PatientRecord
+
+from ukrdc_stats.utils.database import get_sessionmaker
 
 server = "ukrdc_staging"
 
@@ -47,20 +48,20 @@ with get_sessionmaker(server, keypath)() as session:
 stats_cohort = pd.read_csv(stats_cohort_file, dtype=str)
 stats_cohort_reduced = stats_cohort[
     [
-        "pid", 
-        "ukrdcid", 
-        "sendingfacility", 
-        "centre_code", 
-        "satellite_code", 
-        "dialtplt", 
-        "incident", 
-        "timeline_start", 
-        "timeline_stop", 
-        "timeline_length", 
-        "year", 
-        "quarter"
+        "pid",
+        "ukrdcid",
+        "sendingfacility",
+        "centre_code",
+        "satellite_code",
+        "dialtplt",
+        "incident",
+        "timeline_start",
+        "timeline_stop",
+        "timeline_length",
+        "year",
+        "quarter",
     ]
-][stats_cohort.incidprev == 'incident']
+][stats_cohort.incidprev == "incident"]
 
 
 # Outer join stats cohort with incident dataframe on ukrdcid

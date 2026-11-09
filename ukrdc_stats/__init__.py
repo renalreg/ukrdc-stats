@@ -1,6 +1,6 @@
-"""
-Functions to calculate patient cohort statistics.
-Pydantic classes to return nice plotly friendly output.
+"""Functions to calculate patient cohort statistics.
+
+Pydantic classes return nice plotly-friendly output.
 
 The DemographicStatsCalculator available prior to version 3.0.0 has been
 removed; demographics are now served by the KRT and CKD calculators.

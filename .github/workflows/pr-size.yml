@@ -1,0 +1,28 @@
+name: PR size
+
+# Labels every PR by diff size and fails the check on XL, so oversized PRs
+# are visible (and blockable via a required check) rather than surprising
+# reviewers at review time.
+
+on:
+  pull_request:
+
+jobs:
+  size:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - uses: codelytv/pr-size-labeler@v1
+        with:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          xs_max_size: 50
+          s_max_size: 200
+          m_max_size: 600
+          l_max_size: 1500
+          # anything over l_max_size is XL and fails the check
+          fail_if_xl: "true"
+          message_if_xl: >-
+            This PR changes more than 1500 lines (size/XL).
+            Please split it into smaller PRs.
+            Run `tox -e pre_commit` locally to stop notebook output polluting pr.

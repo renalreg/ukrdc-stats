@@ -3,21 +3,21 @@ Simplified version of extract_krt_demog.py. Extracts only the incident KRT
 cohort using the UKRR sending extract and labels it with age and adult/paed.
 """
 
-import pandas as pd
 import datetime as dt
 from pathlib import Path
-from dotenv import dotenv_values
 
+import pandas as pd
+from dotenv import dotenv_values
 from sqlalchemy import select
 from ukrdc_sqla.ukrdc import Facility
+from ukrdc_sqla.utils.constants import FacilityType
 
 from ukrdc_stats.cohorts.base import krt_incident
+from ukrdc_stats.exceptions import EmptyCohortError
 from ukrdc_stats.labellers.demographics import age
 from ukrdc_stats.labellers.geography import adult_paed
-from ukrdc_stats.utils.database import get_sessionmaker
 from ukrdc_stats.utils.data import aggregate_data
-from ukrdc_sqla.utils.constants import FacilityType
-from ukrdc_stats.exceptions import EmptyCohortError
+from ukrdc_stats.utils.database import get_sessionmaker
 
 config = dotenv_values(".env")
 KEYPATH = config.get("UKRDC_STATS_KEYPATH")
@@ -30,8 +30,13 @@ SERVER: str = "ukrdc_live"
 SENDING_EXTRACT: str = "UKRR"
 OUTPUT_FILE: Path = Path(f"krt_demog_ukrr_{SERVER}_{YEAR_START}.csv")
 
+
 def get_renal_centres(session):
-    query = select(Facility.code).where(Facility.facilitytype.in_([FacilityType.adult_renal_centre, FacilityType.paediatric_renal_centre])) 
+    query = select(Facility.code).where(
+        Facility.facilitytype.in_(
+            [FacilityType.adult_renal_centre, FacilityType.paediatric_renal_centre]
+        )
+    )
     return [row[0] for row in session.execute(query).all()]
 
 
@@ -69,7 +74,11 @@ def main():
                 krt_incident_report = adult_paed(session, krt_incident_report)
                 krt_incident_reports.append(krt_incident_report)
 
-            krt_incident_combined = pd.concat(krt_incident_reports, ignore_index=True) if krt_incident_reports else pd.DataFrame()
+            krt_incident_combined = (
+                pd.concat(krt_incident_reports, ignore_index=True)
+                if krt_incident_reports
+                else pd.DataFrame()
+            )
 
             # add year and quarter
             krt_incident_combined["year"] = current_year

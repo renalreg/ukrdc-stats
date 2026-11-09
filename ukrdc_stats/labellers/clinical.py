@@ -1,26 +1,35 @@
+"""Clinical labellers: careplanning, first-seen, vascular access, dialysis."""
+
 import datetime as dt
-from typing import Optional
 
 import pandas as pd
 from sqlalchemy.orm import Session
-from ukrdc_stats.utils.database import get_archive_sessionmaker
-from ukrdc_stats.utils.query import pid_ni_map
+
+from ukrdc_stats.exceptions import MissingColumnError
 from ukrdc_stats.labellers.query import (
     query_careplanning,
-    query_vascular_access,
     query_dialysis_sessions,
     query_first_seen,
+    query_vascular_access,
 )
-from ukrdc_stats.exceptions import MissingColumnError
+from ukrdc_stats.utils.database import get_archive_sessionmaker
+from ukrdc_stats.utils.query import pid_ni_map
 
 
 def _check_ukrdc_extract(cohort: pd.DataFrame) -> None:
-    """
+    """Check the cohort only contains UKRDC extract data.
+
     Careplanning labelling relies on the archive database which only holds
     UKRDC extract data, so cohorts built from any other sendingextract
     cannot be labelled.
-    """
 
+    Args:
+        cohort (pd.DataFrame): Cohort being labelled.
+
+    Raises:
+        MissingColumnError: If the cohort has no sendingextract column.
+        NotImplementedError: If the cohort contains non-UKRDC extracts.
+    """
     if "sendingextract" not in cohort.columns:
         raise MissingColumnError("cohort must contain 'sendingextract' column")
 
@@ -34,37 +43,39 @@ def _check_ukrdc_extract(cohort: pd.DataFrame) -> None:
 
 
 def prevalent_careplanning(
-    session,
-    cohort,
-    prevalence_date,
-    assessment_type=["TPLTassess", "KRTassess", "PPDassess"],
+    session: Session,
+    cohort: pd.DataFrame,
+    prevalence_date: dt.datetime,
+    assessment_type: list[str] | None = None,
 ) -> pd.DataFrame:
-    """
-    Function labels a cohort of patients with the care planning assessment data
-    based on a point of time.
+    """Label a cohort with care planning assessment data at a point in time.
 
     Args:
-        session (_type_): _description_
-        cohort (_type_): _description_
-        prevalence_date (_type_): _description_
-        assessment_type (str, optional): _description_. Defaults to "TPLTassess".
-
-    Raises:
-        ValueError: _description_
-        ValueError: _description_
-        ValueError: _description_
+        session (Session): UKRDC database session.
+        cohort (pd.DataFrame): DataFrame containing patient data with 'pid'
+            and 'sendingfacility' columns.
+        prevalence_date (dt.datetime): Date the assessments are taken at.
+        assessment_type (list[str], optional): Assessment type codes to
+            include. Defaults to all three supported assessment types.
 
     Returns:
-        _type_: _description_
+        pd.DataFrame: DataFrame with the 'assessmentoutcome' column added.
+
+    Raises:
+        ValueError: If an unsupported assessment type is requested.
+        MissingColumnError: If required columns are missing from the cohort.
+        NotImplementedError: If the cohort contains non-UKRDC extracts.
     """
+    if assessment_type is None:
+        assessment_type = ["TPLTassess", "KRTassess", "PPDassess"]
 
     _check_ukrdc_extract(cohort)
 
     for at in assessment_type:
         if at not in ["TPLTassess", "KRTassess", "PPDassess"]:
             msg = f""" Assessment type {at} passed which is not in the dataset:
-            TPLTassess -> transplant suitability assessment 
-            KRTassess -> prefered choice of krt 
+            TPLTassess -> transplant suitability assessment
+            KRTassess -> prefered choice of krt
             PPDassess -> prefered place of dying
             """
             raise ValueError(msg)
@@ -114,25 +125,30 @@ def prevalent_careplanning(
 
 
 def pre_start_careplanning(
-    session, cohort, assessment_type="TPLTassess"
+    session: Session,
+    cohort: pd.DataFrame,
+    assessment_type: str = "TPLTassess",
 ) -> pd.DataFrame:
-    """
-    Function labels a cohort of incident patients with the most recent care
-    planning assessment prior to each patient's KRT start date (fromtime).
+    """Label incident patients with their most recent pre-KRT care plan.
+
+    The assessment used is the most recent one prior to each patient's KRT
+    start date (fromtime).
 
     Args:
-        session (_type_): _description_
-        cohort (_type_): _description_
-        assessment_type (str, optional): _description_. Defaults to "TPLTassess".
-
-    Raises:
-        ValueError: _description_
-        MissingColumnError: _description_
+        session (Session): UKRDC database session.
+        cohort (pd.DataFrame): DataFrame containing patient data with 'pid',
+            'sendingfacility' and 'fromtime' columns.
+        assessment_type (str, optional): Assessment type code to include.
+            Defaults to "TPLTassess".
 
     Returns:
-        _type_: _description_
-    """
+        pd.DataFrame: DataFrame with the 'assessmentoutcome' column added.
 
+    Raises:
+        ValueError: If an unsupported assessment type is requested.
+        MissingColumnError: If required columns are missing from the cohort.
+        NotImplementedError: If the cohort contains non-UKRDC extracts.
+    """
     _check_ukrdc_extract(cohort)
 
     if assessment_type not in ["TPLTassess", "KRTassess"]:
@@ -190,11 +206,11 @@ def pre_start_careplanning(
 
 
 def link_first_seen(session: Session, cohort: pd.DataFrame) -> pd.DataFrame:
-    """
-    Labels a cohort with the date each patient was first seen by renal
-    services and the centre that recorded it. This is recorded in the
-    UKRDC as a treatment with modality code 101; the earliest fromtime is
-    taken as the first_seen date.
+    """Labels a cohort with each patient's first-seen date and centre.
+
+    The first-seen date is recorded in the UKRDC as a treatment with
+    modality code 101; the earliest fromtime is taken as the first_seen
+    date.
 
     Args:
         session: UKRDC database session.
@@ -205,7 +221,6 @@ def link_first_seen(session: Session, cohort: pd.DataFrame) -> pd.DataFrame:
         merged on 'pid'. Patients without a modality 101 record have
         first_seen = NaT and first_seen_centre = NaN.
     """
-
     if "pid" not in cohort.columns:
         raise MissingColumnError("cohort must contain 'pid' column")
 
@@ -214,23 +229,43 @@ def link_first_seen(session: Session, cohort: pd.DataFrame) -> pd.DataFrame:
     return cohort.merge(first_seen, on="pid", how="left")
 
 
-def eskd():
-    pass
+def eskd() -> None:
+    """Placeholder for a future ESKD labeller. Not yet implemented."""
+    raise NotImplementedError("eskd labelling is not yet implemented")
 
 
 def vascular_access(
     cohort: pd.DataFrame,
-    session,
+    session: Session,
     mode: str = "prevalent",
-    prevalence_date: Optional[dt.date] = None,
+    prevalence_date: dt.date | None = None,
 ) -> pd.DataFrame:
-    """
-    Labels a cohort with the vascular access (qhd20) recorded at the most
-    recent dialysis session prior to a cutoff date. In prevalent mode the
-    prevalence_date is used as the cutoff for every patient; in incident
-    mode each patient's own KRT start date (fromtime) is used instead.
-    """
+    """Label a cohort with the vascular access (qhd20) at a cutoff date.
 
+    The access recorded at the most recent dialysis session prior to the
+    cutoff is used.
+
+    In prevalent mode the prevalence_date is used as the cutoff for every
+    patient; in incident mode each patient's own KRT start date (fromtime)
+    is used instead.
+
+    Args:
+        cohort (pd.DataFrame): DataFrame containing patient data with a 'pid'
+            column (and 'fromtime' in incident mode).
+        session (Session): UKRDC database session.
+        mode (str, optional): "prevalent" or "incident". Defaults to
+            "prevalent".
+        prevalence_date (dt.date, optional): Cutoff date in prevalent mode.
+            Defaults to None.
+
+    Returns:
+        pd.DataFrame: DataFrame with 'vascular_access_date' and 'access'
+            columns added.
+
+    Raises:
+        MissingColumnError: If required columns are missing from the cohort.
+        ValueError: If mode is invalid or prevalence_date is missing.
+    """
     if "pid" not in cohort.columns:
         raise MissingColumnError("cohort must contain 'pid' column")
 
@@ -256,21 +291,43 @@ def vascular_access(
 
     # join access data to cohort
     cohort = cohort.merge(access_data, on="pid", how="left")
-    cohort.rename(
-        columns={"procedure_time": "vascular_access_date", "qhd20": "access"},
-        inplace=True,
+    cohort = cohort.rename(
+        columns={"procedure_time": "vascular_access_date", "qhd20": "access"}
     )
     cohort.loc[cohort["vascular_access_date"].isna(), "access"] = "Missing"
 
     return cohort
 
 
-def hd_dialysis_frequency(session, patient_cohort, start, stop, mode="median"):
-    # todo: check for other codes/code standards
+def hd_dialysis_frequency(
+    session: Session,
+    patient_cohort: pd.DataFrame,
+    start: dt.datetime,
+    stop: dt.datetime,
+    mode: str = "median",  # noqa: ARG001 - only median is implemented; kept for API compat
+) -> pd.DataFrame:
+    """Label a cohort with the weekly in-centre haemodialysis session count.
+
+    Args:
+        session (Session): UKRDC database session.
+        patient_cohort (pd.DataFrame): DataFrame containing patient data with
+            'pid' and 'dialtplt' columns.
+        start (dt.datetime): Start of the observation window.
+        stop (dt.datetime): End of the observation window.
+        mode (str, optional): Aggregation mode. Defaults to "median".
+
+    Returns:
+        pd.DataFrame: DataFrame with 'median_sessions_per_week' and
+            'sessions_binned' columns added.
+
+    Raises:
+        MissingColumnError: If the dialtplt column is missing.
+    """
+    # TODO: check for other codes/code standards
     dialysis_snomed = ["302497006", "233581009", "233586004"]
 
     if "dialtplt" not in patient_cohort.columns:
-        raise Exception("dialtplt column not found in patient_cohort")
+        raise MissingColumnError("dialtplt column not found in patient_cohort")
 
     # retrieve dialysis sessions for hd patients
     hd_patients = (
@@ -339,7 +396,6 @@ def hd_dialysis_frequency(session, patient_cohort, start, stop, mode="median"):
             columns={"hdsessionno": "median_sessions_per_week"}
         )
 
-        # print(median_sessions.head())
         median_sessions["sessions_binned"] = pd.cut(
             median_sessions["median_sessions_per_week"],
             bins=[0, 2, 3, 4, 1000],

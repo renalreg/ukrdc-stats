@@ -1,13 +1,15 @@
-"""
-Version 3.0.0 of dashboard stats introduces pydantic style schemas the
-dataframes which are integral to the dashboard stats library. The purpose of
-this change is to introduce better type checking and try and eliminate some of
-the errors which arise from dataframes not having the expected columns.
+"""Pandera schemas for the dataframes central to dashboard stats.
+
+Version 3.0.0 introduced pydantic-style schemas for the dataframes which are
+integral to the dashboard stats library. The purpose is better type checking
+and eliminating errors arising from dataframes lacking the expected columns.
 
 In the first instance the schema will just look a type hinting and validating
 which columns can be null but pandera provides many much more sophisticated
 options here.
 """
+
+from typing import ClassVar
 
 import pandas as pd
 import pandera.pandas as pa
@@ -15,6 +17,8 @@ from pandera.typing import Series
 
 
 class krt_base_schema(pa.DataFrameModel):
+    """Core columns shared by the KRT cohort queries."""
+
     # Core columns from base cohort query
     pid: Series[str]
     ukrdcid: Series[str]
@@ -34,18 +38,23 @@ class krt_base_schema(pa.DataFrameModel):
 
     @pa.dataframe_check
     def fromtime_before_totime(cls, df: pd.DataFrame) -> Series[bool]:
+        """Check closed treatments end after they start; open ones may be NaT."""
         # open treatments have no totime; closed ones must end after they start
         return df["totime"].isna() | (df["fromtime"] <= df["totime"])
 
     class Config:
+        """Pandera model configuration."""
+
         coerce = True
 
 
 class krt_query_prevalent_schema(krt_base_schema):
-    pass
+    """Raw prevalent KRT cohort as returned by the base query."""
 
 
 class krt_query_incident_schema(krt_base_schema):
+    """Raw incident KRT cohort plus discharge and centre labelling fields."""
+
     dischargereasoncode: Series[str] = pa.Field(nullable=True)
     dischargereasoncodestd: Series[str] = pa.Field(nullable=True)
     dischargelocationcode: Series[str] = pa.Field(nullable=True)
@@ -58,6 +67,8 @@ class krt_query_incident_schema(krt_base_schema):
 
 
 class krt_incident_schema(krt_query_incident_schema):
+    """Labelled incident KRT cohort: one row per patient, one centre."""
+
     centre_code: Series[str]
     satellite_code: Series[str]
     dialtplt: Series[str] = pa.Field(nullable=True, isin=["HD", "HHD", "PD", "TX"])
@@ -65,11 +76,15 @@ class krt_incident_schema(krt_query_incident_schema):
     incident: Series[bool]
 
     class Config:
+        """Pandera model configuration."""
+
         coerce = True
-        unique = ["ukrdcid", "pid"]
+        unique: ClassVar[list[str]] = ["ukrdcid", "pid"]
 
 
 class krt_prevalent_schema(krt_base_schema):
+    """Labelled prevalent KRT cohort across a centre and its satellites."""
+
     # centre_code stays nullable: unmapped units are otherised to satellite
     # code 995 but keep a null centre code as krt_prevalent does not filter
     # down to a single centre before returning
@@ -79,6 +94,8 @@ class krt_prevalent_schema(krt_base_schema):
 
 
 class demog_base_schema(pa.DataFrameModel):
+    """Demographics extract shared by the cohort labellers."""
+
     pid: Series[str]
     ukrdcid: Series[str]
     sendingfacility: Series[str]
@@ -88,10 +105,14 @@ class demog_base_schema(pa.DataFrameModel):
     deathtime: Series[pa.DateTime] = pa.Field(nullable=True)
 
     class Config:
+        """Pandera model configuration."""
+
         coerce = True
 
 
 class ckd_ukrdc_base_schema(pa.DataFrameModel):
+    """Raw CKD cohort as returned by the base query."""
+
     pid: Series[str]
     ukrdcid: Series[str]
     sendingfacility: Series[str]
@@ -116,10 +137,14 @@ class ckd_ukrdc_base_schema(pa.DataFrameModel):
     max_creatinine_date: Series[pa.DateTime] = pa.Field(nullable=True)
 
     class Config:
+        """Pandera model configuration."""
+
         coerce = True
 
 
 class ckd_prevalent_schema(ckd_ukrdc_base_schema):
+    """Labelled prevalent CKD cohort: one row per patient."""
+
     pid: Series[str] = pa.Field(unique=True)
     ukrdcid: Series[str] = pa.Field(unique=True)
 
@@ -129,10 +154,14 @@ class ckd_prevalent_schema(ckd_ukrdc_base_schema):
     egfr_min: Series[int]
 
     class Config:
+        """Pandera model configuration."""
+
         coerce = True
 
 
 class ckd_treatment_archive_base_schema(pa.DataFrameModel):
+    """CKD treatment records extracted from the XML archive."""
+
     sendingfacility: Series[str]
     patientid: Series[str]
     organization: Series[str]
@@ -144,4 +173,6 @@ class ckd_treatment_archive_base_schema(pa.DataFrameModel):
     totime: Series[pa.DateTime] = pa.Field(nullable=True)
 
     class Config:
+        """Pandera model configuration."""
+
         coerce = True

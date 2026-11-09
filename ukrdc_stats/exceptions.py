@@ -1,25 +1,21 @@
-"""
-Exceptions for the UKRDC Statistics API
-"""
+"""Exceptions for the UKRDC Statistics API."""
 
 
 class InvalidCentreError(ValueError):
-    pass
+    """Raised when a centre code is not a valid renal centre."""
 
 
 class NoCohortError(ValueError):
-    pass
+    """Raised when a cohort extraction finds no patients."""
 
 
 class EmptyCohortError(ValueError):
-    """Raised when a cohort query returns no data"""
-
-    pass
+    """Raised when a cohort query returns no data."""
 
 
 class NoTestsError(ValueError):
-    pass
+    """Raised when no tests could be run for a requested statistic."""
 
 
 class MissingColumnError(ValueError):
-    pass
+    """Raised when a dataframe is missing a required column."""

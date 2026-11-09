@@ -1,40 +1,34 @@
-"""
-################
-LABELLER QUERIES
-################
+"""Labeller queries.
 
 This module contains the raw queries which are used by the labellers to extract
 ukrdc data. The scope of these functions should as far as possible be kept to
 actually interacting with the database rather than processing and linking the
 data.
-
 """
 
-import zipfile
+import datetime as dt
 import shutil
+import zipfile
+from collections.abc import Sequence
 from contextlib import suppress
-from typing import List, Optional
+from urllib.request import urlretrieve
 
 import pandas as pd
-import datetime as dt
-from sqlalchemy import select, func, and_, or_
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session
-
 from ukrdc_sqla.ukrdc import (
-    LabOrder,
-    ResultItem,
     Address,
-    PatientRecord,
-    Patient,
     DialysisSession,
     Facility,
+    LabOrder,
+    Patient,
+    PatientRecord,
+    ResultItem,
     Treatment,
 )
 from ukrdc_sqla.utils.constants import FacilityType
-from ukrdc_sqla.xmlarchive import Patient as XMLPatient, Assessment
-
-
-from urllib.request import urlretrieve
+from ukrdc_sqla.xmlarchive import Assessment
+from ukrdc_sqla.xmlarchive import Patient as XMLPatient
 
 from ukrdc_stats.utils.cache import CONFIG
 
@@ -47,19 +41,17 @@ ONS_ADDRESS_DATA_URL = (
 ONS_CACHE_DIR = CONFIG["cache_dir"].parent / "ons_postcode_data"
 
 
-def download_ons_address_data():
-    """
-    Download the ONS address data from the ArcGIS portal.
-    """
+def download_ons_address_data() -> None:
+    """Download the ONS address data from the ArcGIS portal."""
     cache_dir = ONS_CACHE_DIR
     cache_dir.mkdir(parents=True, exist_ok=True)
 
     zip_path = cache_dir.parent / "ons_data.zip"
     zip_path.parent.mkdir(parents=True, exist_ok=True)
 
-    urlretrieve(ONS_ADDRESS_DATA_URL, zip_path)  # nosec B310 - hardcoded HTTPS URL constant
+    urlretrieve(ONS_ADDRESS_DATA_URL, zip_path)  # noqa: S310
 
-    with open(zip_path, "rb") as f:
+    with zip_path.open("rb") as f:
         header = f.read(4)
     if header[:2] != b"PK":
         # don't let a cleanup failure mask the real error
@@ -81,10 +73,13 @@ def download_ons_address_data():
     shutil.rmtree(temp_extract)
     zip_path.unlink(missing_ok=True)
 
-    return
-
 
 def query_ons_postcode_data() -> pd.DataFrame:
+    """Load the ONS postcode IMD data, downloading it if not cached.
+
+    Returns:
+        pd.DataFrame: Postcodes with imd20ind and imddecile columns.
+    """
     cache_dir = ONS_CACHE_DIR
     cache_dir.mkdir(parents=True, exist_ok=True)
 
@@ -111,21 +106,31 @@ def query_ons_postcode_data() -> pd.DataFrame:
 
 def query_results(
     session: Session,
-    pids: List[str],
-    test_codes: Optional[List[str]] = None,
+    pids: list[str],
+    test_codes: list[str] | None = None,
     chunk_size: int = 100,
-    from_time: Optional[dt.datetime] = None,
-    to_time: Optional[dt.datetime] = None,
+    from_time: dt.datetime | None = None,
+    to_time: dt.datetime | None = None,
     mode: str = "raw",
 ) -> pd.DataFrame:
-    """
-    Extract test results for a cohort of patients using chunked queries
-    to prevent database timeouts.
+    """Extract test results for a cohort of patients using chunked queries.
+
+    Chunking prevents database timeouts on large IN clauses.
 
     Args:
+        session (Session): UKRDC database session.
+        pids (list[str]): Patient ids to extract results for.
+        test_codes (list[str] | None): serviceidcodes to filter on. None
+            fetches everything.
+        chunk_size (int): Patients per query chunk.
+        from_time (dt.datetime | None): Earliest observationtime to include.
+        to_time (dt.datetime | None): Latest observationtime to include.
         mode: "raw" returns all rows. "min" or "max" aggregates to one
               row per pid per serviceidcode using MIN/MAX(resultvalue),
               reducing data transfer for large result sets.
+
+    Returns:
+        pd.DataFrame: Result rows for the requested pids.
     """
     results = []
 
@@ -188,7 +193,7 @@ def query_results(
 
 
 def query_postcodes(
-    session: Session, pids: List[str], chunk_size: int = 100
+    session: Session, pids: list[str], chunk_size: int = 100
 ) -> pd.DataFrame:
     """Extract postcodes for a cohort of patients.
 
@@ -209,36 +214,48 @@ def query_postcodes(
         chunk_data = session.execute(query).all()
         if chunk_data:
             results.extend(chunk_data)
-    df = pd.DataFrame(results)
+    postcodes_df = pd.DataFrame(results)
 
     # Define preference order for addressuse
-
     if not results:
         return pd.DataFrame(columns=["pid", "postcode"])
-
     use_order = {"H": 1, "PST": 2, None: 3, "TMP": 4}
-    df["use_priority"] = df["addressuse"].map(use_order).fillna(3)
+    postcodes_df["use_priority"] = postcodes_df["addressuse"].map(use_order).fillna(3)
 
     # Sort by pid and priority, then keep first occurrence per pid
-    df = df.sort_values(["pid", "use_priority"]).groupby("pid", as_index=False).first()
+    postcodes_df = (
+        postcodes_df.sort_values(["pid", "use_priority"])
+        .groupby("pid", as_index=False)
+        .first()
+    )
 
     # Drop the priority column
-    df = df.drop(columns=["use_priority", "addressuse"])
-
-    return df
+    return postcodes_df.drop(columns=["use_priority", "addressuse"])
 
 
 def query_careplanning(
     archieve_session: Session,
-    facility_codes: List[str],
-    assessment_type: List[str] = ["TRTassess", "RRTassess", "PPDassess"],
-    prevalence_point: dt.datetime = None,
+    facility_codes: list[str],
+    assessment_type: Sequence[str] = ("TRTassess", "RRTassess", "PPDassess"),
+    prevalence_point: dt.datetime | None = None,
 ) -> pd.DataFrame:
-    """Extract care-planning assessments from the archive database. If a
-    prevalence point is provided the most assessment prior to the prevelance
-    point is selected.
-    """
+    """Extract care-planning assessments from the archive database.
 
+    If a prevalence point is provided the most recent assessment prior to the
+    prevalence point is selected.
+
+    Args:
+        archieve_session (Session): Session for the xml archive database.
+        facility_codes (list[str]): Sending facilities to extract assessments
+            for.
+        assessment_type (Sequence[str], optional): Assessment type codes to
+            include. Defaults to all three supported types.
+        prevalence_point (dt.datetime, optional): Only assessments starting
+            before this point are returned. Defaults to None.
+
+    Returns:
+        pd.DataFrame: DataFrame of assessments for the given facilities.
+    """
     # retreive all the assessments for a given set of facilities and assessment_types
     assessments_query = (
         select(
@@ -308,16 +325,30 @@ def query_careplanning(
 
 def query_vascular_access(
     session: Session,
-    pids: List[str],
-    cutoff_dates: List[dt.datetime],
+    pids: list[str],
+    cutoff_dates: Sequence[dt.date],
     chunk_size: int = 100,
 ) -> pd.DataFrame:
-    """Extract the most recent dialysis session prior to a patient specific date"""
+    """Extract the most recent dialysis session prior to a patient-specific date.
 
+    Args:
+        session (Session): UKRDC database session.
+        pids (list[str]): Patient ids to extract sessions for.
+        cutoff_dates (Sequence[dt.date]): One cutoff per pid, zipped with
+            pids. datetime and Timestamp are both accepted as they are
+            date subtypes.
+        chunk_size (int, optional): Patients per query chunk. Defaults to 100.
+
+    Returns:
+        pd.DataFrame: DataFrame with pid, procedure_time and qhd20 columns.
+
+    Raises:
+        ValueError: If pids and cutoff_dates are different lengths.
+    """
     if len(pids) != len(cutoff_dates):
         raise ValueError("pids and cutoff_dates must be the same length")
 
-    pairs = list(zip(pids, cutoff_dates))
+    pairs = list(zip(pids, cutoff_dates, strict=False))
     results = []
 
     for i in range(0, len(pairs), chunk_size):
@@ -354,13 +385,13 @@ def query_vascular_access(
 
 
 def query_first_seen(
-    session: Session, pids: List[str], chunk_size: int = 100
+    session: Session, pids: list[str], chunk_size: int = 100
 ) -> pd.DataFrame:
-    """Extract the earliest treatment start per patient recorded with
-    modality code 101 (first contact with renal services), along with the
-    centre that recorded it. Queries are chunked to avoid connection
-    timeouts caused by large IN clauses."""
+    """Extract each patient's earliest modality-101 treatment and its centre.
 
+    Modality code 101 records first contact with renal services. Queries
+    are chunked to avoid connection timeouts caused by large IN clauses.
+    """
     results = []
     for i in range(0, len(pids), chunk_size):
         chunk = pids[i : i + chunk_size]
@@ -388,7 +419,8 @@ def query_first_seen(
     return pd.DataFrame(results, columns=columns)
 
 
-def query_paed_centres(session) -> list[str]:
+def query_paed_centres(session: Session) -> list[str]:
+    """Return the facility codes of all paediatric renal centres."""
     query = select(Facility.facilitycode).where(
         Facility.facilitytype == FacilityType.paediatric_renal_centre
     )
@@ -397,12 +429,12 @@ def query_paed_centres(session) -> list[str]:
     return [row[0] for row in paed_centres]
 
 
-def query_demog(session: Session, pids: List[str]) -> pd.DataFrame:
-    """
-    Extracts demographic data for a list of pids. Queries are chunked into
-    groups of 100 to avoid connection timeouts caused by large IN clauses.
-    """
+def query_demog(session: Session, pids: list[str]) -> pd.DataFrame:
+    """Extract demographic data for a list of pids.
 
+    Queries are chunked into groups of 100 to avoid connection timeouts
+    caused by large IN clauses.
+    """
     chunk_size = 100
     demog_data = []
     for i in range(0, len(pids), chunk_size):
@@ -429,7 +461,19 @@ def query_demog(session: Session, pids: List[str]) -> pd.DataFrame:
     return pd.DataFrame(demog_data, columns=columns)
 
 
-def query_dialysis_sessions(session: Session, patient_list: pd.Series):
+def query_dialysis_sessions(
+    session: Session, patient_list: Sequence[str]
+) -> pd.DataFrame:
+    """Extract dialysis sessions for a list of patients.
+
+    Args:
+        session (Session): UKRDC database session.
+        patient_list (Sequence[str]): Patient ids to extract sessions for.
+
+    Returns:
+        pd.DataFrame: DataFrame with pid, procedure_type_code,
+            procedure_time and qhd20 columns.
+    """
     query = (
         select(
             DialysisSession.pid,
