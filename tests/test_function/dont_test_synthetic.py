@@ -21,11 +21,9 @@ pytest.importorskip("hypothesis")
 
 from ukrdc_stats.cohorts.base import (
     krt_incident,
-    krt_prevalent,
 )
 from ukrdc_stats.cohorts.schema import (
     krt_query_incident_schema,
-    krt_query_prevalent_schema,
 )
 
 CENTRE = "RFRAT"

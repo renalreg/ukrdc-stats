@@ -1,47 +1,47 @@
-"""
-Module contains the queries to generate dataframes from raw ukrdc data with
+"""Module contains the queries to generate dataframes from raw ukrdc data with
 minimal processing. Queries that can feasibly be empty should be generated
 from the pandera schema. Queries which cannot feasibly be empty should return
 an empty cohort error.
 
-TODO:
+Todo:
 - Expand validation via pandera schemas
 """
 
 import datetime as dt
-from typing import Optional
 
-from ukrdc_stats.cohorts.schema import (
-    krt_base_schema,
-    krt_query_incident_schema,
-    krt_query_prevalent_schema,
-    demog_base_schema,
-    ckd_ukrdc_base_schema,
-    ckd_treatment_archive_base_schema,
-)
-from ukrdc_stats.utils.query import pid_ni_map
+import pandas as pd
+import pandera.pandas as pa
+from sqlalchemy import and_, case, exists, func, or_, select
+from sqlalchemy.orm import Session, aliased
 from ukrdc_sqla.ukrdc import (
-    Treatment,
-    Patient,
-    PatientRecord,
-    ModalityCodes,
     CodeMap,
     FacilityRelationship,
     LabOrder,
+    ModalityCodes,
+    Patient,
+    PatientRecord,
     ResultItem,
+    Treatment,
 )
 from ukrdc_sqla.utils.constants import RelationshipType
 from ukrdc_sqla.xmlarchive import (
     Patient as XMLPatient,
+)
+from ukrdc_sqla.xmlarchive import (
     Treatment as XMLTreatment,
 )
 
-import pandera.pandas as pa
-import pandas as pd
+from ukrdc_stats.cohorts.schema import (
+    ckd_treatment_archive_base_schema,
+    ckd_ukrdc_base_schema,
+    demog_base_schema,
+    krt_base_schema,
+    krt_query_incident_schema,
+    krt_query_prevalent_schema,
+)
 from ukrdc_stats.exceptions import EmptyCohortError
-from sqlalchemy import select, exists, case, or_, and_, func
-from sqlalchemy.orm import Session, aliased
 from ukrdc_stats.utils.database import get_archive_sessionmaker
+from ukrdc_stats.utils.query import pid_ni_map
 
 
 @pa.check_output(krt_query_prevalent_schema)
@@ -58,7 +58,6 @@ def query_krt_prevalent(
     Returns:
         krt_query_prevalent_schema: Patient cohort dataframe
     """
-
     query = (
         select(
             PatientRecord.pid,
@@ -121,7 +120,7 @@ def query_krt_incident(
     start: dt.datetime,
     recovery_window: dt.timedelta = dt.timedelta(days=90),
     sending_extract: str = "UKRDC",
-    ukrdcids: Optional[list[str]] = None,
+    ukrdcids: list[str] | None = None,
 ) -> krt_base_schema:
     """Core query containing all of the data from the ukrdc database
     necessary to generate an incident krt cohort.
@@ -135,7 +134,6 @@ def query_krt_incident(
     Returns:
         krt_base_schema: Patient cohort dataframe
     """
-
     minimum_transplant_length = 7
 
     ChronicTreatment = aliased(Treatment)
@@ -519,7 +517,6 @@ def query_ckd_treatment_archive(
     Returns:
         ckd_archive_base_schema: _description_
     """
-
     ckd_not_rrt_codes = ["901", "902", "903"]
     treatments_query = (
         select(
@@ -559,11 +556,9 @@ def query_ckd_treatment_archive(
 
 @pa.check_output(ckd_ukrdc_base_schema)
 def query_ckd(session: Session, facility_code: str, prevalence_point: dt.datetime):
-    """
-    Function returns the base query which forms the basis of the ckd cohort.
+    """Function returns the base query which forms the basis of the ckd cohort.
     This includes data from the ukrdc with corrections from the removed xml_archive database.
     """
-
     # query the data in the ukrdc database
     ckd_ukrdc = query_ckd_ukrdc(session, facility_code, prevalence_point)
 

@@ -1,5 +1,4 @@
-"""
-Prevalent CKD stats calculator.
+"""Prevalent CKD stats calculator.
 
 Recreates the PrevalentCKDCalculator interface used by the UKRDC API on top
 of the version 3.0.0 cohort functions. The care planning report and XML
@@ -8,7 +7,6 @@ breakdowns of the prevalent CKD cohort.
 """
 
 import datetime as dt
-from typing import Dict, Optional
 
 import pandas as pd
 from sqlalchemy.orm import Session
@@ -32,31 +30,30 @@ ROW_ATTRIBUTES = ["age", "ethnicity", "sex", "assessmentoutcome"]
 
 class PrevalentCKDCalculator:
     """Calculates demographic statistics for the prevalent CKD cohort of a
-    renal centre at a given prevalence point."""
+    renal centre at a given prevalence point.
+    """
 
     def __init__(
         self,
         session: Session,
         facility: str,
-        prevalence_point: Optional[dt.datetime] = None,
+        prevalence_point: dt.datetime | None = None,
     ):
-        """
-        Args:
-            session (Session): UKRDC database session.
-            facility (str): Renal centre code.
-            prevalence_point (Optional[dt.datetime]): Date the cohort is
-                calculated at. Defaults to now.
+        """Args:
+        session (Session): UKRDC database session.
+        facility (str): Renal centre code.
+        prevalence_point (Optional[dt.datetime]): Date the cohort is
+            calculated at. Defaults to now.
         """
         self.session = session
         self.facility = facility
         self.prevalence_point = prevalence_point or dt.datetime.now()
 
-        self._patient_cohort: Optional[pd.DataFrame] = None
-        self._aggregated: Optional[pd.DataFrame] = None
+        self._patient_cohort: pd.DataFrame | None = None
+        self._aggregated: pd.DataFrame | None = None
 
     def extract_patient_cohort(self) -> None:
-        """
-        Extract the prevalent CKD cohort and apply the same labelling pipeline
+        """Extract the prevalent CKD cohort and apply the same labelling pipeline
         as the extract_ckd_prevalent.py script: IMD deprivation decile and
         prevalent careplanning assessment outcome.
         """
@@ -66,7 +63,6 @@ class PrevalentCKDCalculator:
                 f"No patients found in the cohort. Did you mean to try and extract facility {self.facility}?"
             )
 
-        # cohort = imd(self.session, cohort)
         cohort = prevalent_careplanning(
             self.session, cohort, self.prevalence_point, "TPLTassess"
         )
@@ -77,8 +73,7 @@ class PrevalentCKDCalculator:
 
     @property
     def aggregated(self) -> pd.DataFrame:
-        """
-        Long format headcounts split by satellite unit. Calculated once and
+        """Long format headcounts split by satellite unit. Calculated once and
         reused by all the stats builders.
         """
         if self._aggregated is None:
@@ -98,8 +93,7 @@ class PrevalentCKDCalculator:
         return cohort["ukrdcid"].nunique()
 
     def extract_satellite_stats(self, unit: str = "all") -> CKDStats:
-        """
-        Build the CKDStats for a single satellite unit, or for the whole
+        """Build the CKDStats for a single satellite unit, or for the whole
         centre by re-aggregating over the satellite split.
 
         Args:
@@ -150,22 +144,20 @@ class PrevalentCKDCalculator:
         )
 
     def extract_stats(self) -> UnitLevelCKDStats:
-        """
-        Extract demographic stats for the whole centre and each satellite unit.
+        """Extract demographic stats for the whole centre and each satellite unit.
 
         Returns:
             UnitLevelCKDStats: Stats for the whole centre and per unit.
         """
         units = sorted(self.aggregated["satellite_code"].dropna().unique())
-        unit_stats: Dict[str, CKDStats] = {
+        unit_stats: dict[str, CKDStats] = {
             unit: self.extract_satellite_stats(unit) for unit in units
         }
 
         return UnitLevelCKDStats(all=self.extract_satellite_stats(), units=unit_stats)
 
     def generate_cohort_report(self) -> BaseTable:
-        """
-        Return the aggregated long format headcounts, matching the shape of
+        """Return the aggregated long format headcounts, matching the shape of
         the CSV extract scripts.
 
         Returns:

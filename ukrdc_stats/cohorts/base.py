@@ -1,29 +1,26 @@
-"""
-Base cohort functions
+"""Base cohort functions
 These functions define a set of core shared definitions which allow the
 generation of cohorts from the ukrdc database to
 """
 
+import datetime as dt
+
+import pandas as pd
+import pandera.pandas as pa
 from sqlalchemy.orm import Session
-from typing import Optional
 
 from ukrdc_stats.cohorts.query import query_ckd, query_krt_incident, query_krt_prevalent
-from ukrdc_stats.labellers.demographics import age
-from ukrdc_stats.labellers.geography import adult_paed, main_satellite_centres
-from ukrdc_stats.utils.data import GENDER_GROUP_MAP, egfr as calculate_egfr
-from ukrdc_stats.validation.validate import validate_centre
-from ukrdc_stats.exceptions import MissingColumnError
-
-import datetime as dt
-import pandera.pandas as pa
-import pandas as pd
-
-
 from ukrdc_stats.cohorts.schema import (
     ckd_prevalent_schema,
-    krt_prevalent_schema,
     krt_incident_schema,
+    krt_prevalent_schema,
 )
+from ukrdc_stats.exceptions import MissingColumnError
+from ukrdc_stats.labellers.demographics import age
+from ukrdc_stats.labellers.geography import adult_paed, main_satellite_centres
+from ukrdc_stats.utils.data import GENDER_GROUP_MAP
+from ukrdc_stats.utils.data import egfr as calculate_egfr
+from ukrdc_stats.validation.validate import validate_centre
 
 
 def ckd_incident(session: Session, facility: str, end: dt.datetime, start: dt.datetime):
@@ -34,8 +31,7 @@ def ckd_incident(session: Session, facility: str, end: dt.datetime, start: dt.da
 def ckd_prevalent(
     session: Session, centre: str, prevalence_point: dt.datetime
 ) -> ckd_prevalent_schema:
-    """
-    Get the prevalent CKD cohort for a given facility and prevalence point.
+    """Get the prevalent CKD cohort for a given facility and prevalence point.
 
     Note: Should this be more by centre?
 
@@ -44,7 +40,6 @@ def ckd_prevalent(
         facility (str): Facility code
         prevalence_point (dt.datetime): Prevalence point
     """
-
     # Get base data
     ukrdc_base_data = query_ckd(session, centre, prevalence_point)
 
@@ -113,16 +108,13 @@ def ckd_prevalent(
 
 
 def _chain_treatments(base_cohort, recovery_window: dt.timedelta):
-    """
-
-    Args:
+    """Args:
         base_cohort (_type_): _description_
         recovery_window (dt.timedelta): _description_
 
     Returns:
         _type_: _description_
     """
-
     base_cohort.sort_values(by=["ukrdcid", "fromtime", "totime"], inplace=True)
     base_cohort["timeline_order"] = base_cohort.groupby("ukrdcid").cumcount()
 
@@ -150,8 +142,7 @@ def _chain_treatments(base_cohort, recovery_window: dt.timedelta):
 
 
 def _clean_totime(base_cohort: pd.DataFrame) -> pd.DataFrame:
-    """
-    The current record will typically be open (totime is NaT). However it's
+    """The current record will typically be open (totime is NaT). However it's
     more convenient to treat these as infinities, for computing equalities.
     Function also cleans totimes where a date of death is present. This
     function could further be expanded to handle cases where the record hasn't
@@ -163,7 +154,6 @@ def _clean_totime(base_cohort: pd.DataFrame) -> pd.DataFrame:
     Returns:
         pd.DataFrame: Cleaned base cohort dataframe
     """
-
     # conveniently large number to represent infinity
     infinity = dt.datetime(2200, 1, 1)
 
@@ -182,8 +172,7 @@ def _clean_totime(base_cohort: pd.DataFrame) -> pd.DataFrame:
 
 
 def _clean_equal_records(base_cohort: pd.DataFrame) -> pd.DataFrame:
-    """
-    Remove records that are equal to the previous record.
+    """Remove records that are equal to the previous record.
 
     Args:
         base_cohort (pd.DataFrame): Base cohort dataframe
@@ -191,7 +180,6 @@ def _clean_equal_records(base_cohort: pd.DataFrame) -> pd.DataFrame:
     Returns:
         pd.DataFrame: Cleaned base cohort dataframe
     """
-
     if "is_equal" not in base_cohort.columns:
         raise MissingColumnError("is_equal column not found in base_cohort")
 
@@ -232,16 +220,12 @@ def _clean_equal_records(base_cohort: pd.DataFrame) -> pd.DataFrame:
 
 
 def _label_timeline(krt_incident_cohort: pd.DataFrame) -> pd.DataFrame:
-    """
-
-
-    Args:
+    """Args:
         krt_incident_cohort (pd.DataFrame): KRT incident cohort dataframe
 
     Returns:
         pd.DataFrame: KRT incident cohort dataframe with treatment labels
     """
-
     if "new_timeline" not in krt_incident_cohort.columns:
         raise MissingColumnError("new_timeline column not found in krt_incident_cohort")
 
@@ -272,11 +256,10 @@ def _label_timeline(krt_incident_cohort: pd.DataFrame) -> pd.DataFrame:
 
 
 def _reassign_transplants(singular_cohort):
-    """
-    Transplants should be reassigned to their supervision centre as opposed to
+    """Transplants should be reassigned to their supervision centre as opposed to
     the transplanting centre.
 
-    TODO:
+    Todo:
     1) How to handle unsuccessful transplants?
     2) How to handle patients with no ckd centre?
 
@@ -287,7 +270,6 @@ def _reassign_transplants(singular_cohort):
     Returns:
         pd.DataFrame: Singular cohort dataframe with transplants reassigned
     """
-
     # In instance of admissionsource we reassign
     # how do we handle things like 999?
     transfer_in_mask = (
@@ -308,15 +290,13 @@ def _reassign_transplants(singular_cohort):
 def _label_incident(
     krt_new_cohort, recovery_window: dt.timedelta = dt.timedelta(days=90)
 ):
-    """
-    The UKRR incident cohort counts patients who are recieving acute and
+    """The UKRR incident cohort counts patients who are recieving acute and
     chronic dialysis differently. This function attempts to apply this
     discrimination to ukrdc patients.
 
     Returns:
         pd.DataFrame: DataFrame with acute/chronic labels
     """
-
     # anyone who receives a transplant at any point is coded as chronic as long
     #  as it doesn't fail within 14 days. At this point there shouldn't be any
     # patients with historic transplants
@@ -361,79 +341,17 @@ def _label_incident(
     return krt_new_cohort
 
 
-def _label_incident_old(
-    krt_new_cohort,
-    start_date: dt.datetime,
-    end_date: dt.datetime,
-    recovery_window: dt.timedelta = dt.timedelta(days=90),
-):
-    """Function with the aim of replicating the incident cohort produced by version 2.x.x here for testing purposes
-
-    Args:
-        krt_new_cohort (_type_): _description_
-        recovery_window (dt.timedelta, optional): _description_. Defaults to dt.timedelta(days=90).
-    """
-
-    # transfer out patients
-    discharge_reasons = []  # = ["38"]?
-    discharge_locations = ["ABROAD"]
-    transfered_patients = krt_new_cohort[
-        (
-            krt_new_cohort.dischargelocationcode.isin(discharge_locations)
-            | krt_new_cohort.dischargereasoncode.isin(discharge_reasons)
-        )
-        & (krt_new_cohort.fromtime == krt_new_cohort.timeline_start)
-    ].ukrdcid.drop_duplicates()
-    transfered_out = krt_new_cohort.ukrdcid.isin(transfered_patients)
-
-    # Crash landed patients are defined:
-    # - no chronic treatment records or tx
-    # - remains on KRT for more than 90 days or transfered out
-    # - survives for more than 90 days
-    is_crash_landing = (
-        (krt_new_cohort.ckd_centre.isna())
-        & (krt_new_cohort.historic_tx.isna())
-        & ((krt_new_cohort.timeline_length > recovery_window) | transfered_out)
-        & (krt_new_cohort.length_of_life > recovery_window)
-    )
-
-    # Patients with a previous record of transplant or ckd are considered
-    # planned for KRT. These patients must stay on KRT for more than 90
-    # days or die to be counted as incident.
-    planned_ckd = (
-        ~krt_new_cohort.ckd_centre.isna() | ~krt_new_cohort.historic_tx.isna()
-    ) & ((krt_new_cohort.timeline_length > recovery_window) | transfered_out) | (
-        krt_new_cohort.length_of_life < recovery_window
-    )
-
-    krt_new_cohort["incident"] = (
-        (planned_ckd | is_crash_landing)
-        & (krt_new_cohort.timeline_start > start_date)
-        & (krt_new_cohort.timeline_start <= end_date)
-    )
-
-    # reduce down to one row per patient
-    incident_cohort_singular = (
-        krt_new_cohort[krt_new_cohort.timeline_start == krt_new_cohort.fromtime]
-        .sort_values("totime", ascending=False)
-        .drop_duplicates("ukrdcid", keep="first")
-    )
-
-    return incident_cohort_singular
-
-
 @pa.check_output(krt_incident_schema)
 def krt_incident(
     session: Session,
     centre: str,
     end_date: dt.datetime,
-    start_date: Optional[dt.datetime] = None,
+    start_date: dt.datetime | None = None,
     recovery_window: dt.timedelta = dt.timedelta(days=90),
     sending_extract: str = "UKRDC",
-    ukrdcids: Optional[list[str]] = None,
+    ukrdcids: list[str] | None = None,
 ) -> krt_incident_schema:
-    """
-    Get the incident KRT cohort for a given renal centre, it's satellites and date range.
+    """Get the incident KRT cohort for a given renal centre, it's satellites and date range.
 
     Args:
         session (Session): UKRDC session
@@ -445,7 +363,6 @@ def krt_incident(
         ukrdcids (Optional[list[str]], optional): Restrict the cohort to these ukrdcids (within the centre's eligible patients). Defaults to None.
 
     """
-
     validate_centre(session, centre)
 
     if not start_date:
@@ -509,8 +426,7 @@ def krt_prevalent(
     prevalence_point: dt.datetime,
     sending_extract: str = "UKRDC",
 ) -> krt_prevalent_schema:
-    """
-    Get the prevalent KRT cohort for a given facility and prevalence point.
+    """Get the prevalent KRT cohort for a given facility and prevalence point.
 
     Args:
         session (Session): UKRDC session
@@ -521,7 +437,6 @@ def krt_prevalent(
     Returns:
         krt_prevalent_schema: Prevalent KRT cohort
     """
-
     base_cohort = query_krt_prevalent(
         session, facility, prevalence_point, sending_extract=sending_extract
     )

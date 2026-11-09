@@ -60,7 +60,7 @@ def test_build_labelled2d_filters_and_counts():
         "description",
         {"incidprev": "incident"},
     )
-    counts = dict(zip(incident_sex.data.x, incident_sex.data.y))
+    counts = dict(zip(incident_sex.data.x, incident_sex.data.y, strict=False))
     assert counts == {"Male": 1, "Female": 1}
     assert incident_sex.metadata.population_size == 2
 
@@ -73,7 +73,7 @@ def test_build_labelled2d_filters_and_counts():
         "description",
         {"incidprev": "prevalent", "satellite_code": "STAMFORD"},
     )
-    assert dict(zip(unit_sex.data.x, unit_sex.data.y)) == {"Male": 2}
+    assert dict(zip(unit_sex.data.x, unit_sex.data.y, strict=False)) == {"Male": 2}
 
 
 def test_build_labelled2d_all_sums_over_satellites():
@@ -87,7 +87,7 @@ def test_build_labelled2d_all_sums_over_satellites():
         "description",
         {"incidprev": "prevalent"},
     )
-    counts = dict(zip(prevalent_ethnicity.data.x, prevalent_ethnicity.data.y))
+    counts = dict(zip(prevalent_ethnicity.data.x, prevalent_ethnicity.data.y, strict=False))
     assert counts == {"White": 2, "Asian": 1, "Missing": 1}
 
 
@@ -113,7 +113,7 @@ def test_krt_calculator_extract_stats():
 
     # whole centre stats sum over both satellites
     incident_ages = dict(
-        zip(stats.all.incident_krt_age.data.x, stats.all.incident_krt_age.data.y)
+        zip(stats.all.incident_krt_age.data.x, stats.all.incident_krt_age.data.y, strict=False)
     )
     assert incident_ages["18-34"] == 1
     assert incident_ages["35-54"] == 1
@@ -123,14 +123,14 @@ def test_krt_calculator_extract_stats():
     incident_modalities = dict(
         zip(
             stats.all.incident_krt_modality.data.x,
-            stats.all.incident_krt_modality.data.y,
+            stats.all.incident_krt_modality.data.y, strict=False,
         )
     )
     assert incident_modalities == {"HD": 1, "PD": 1}
     prevalent_modalities = dict(
         zip(
             stats.all.prevalent_krt_modality.data.x,
-            stats.all.prevalent_krt_modality.data.y,
+            stats.all.prevalent_krt_modality.data.y, strict=False,
         )
     )
     assert prevalent_modalities == {"HD": 2, "HHD": 1, "TX": 1}
@@ -140,7 +140,7 @@ def test_krt_calculator_extract_stats():
     stamford_sex = dict(
         zip(
             stats.units["STAMFORD"].prevalent_krt_sex.data.x,
-            stats.units["STAMFORD"].prevalent_krt_sex.data.y,
+            stats.units["STAMFORD"].prevalent_krt_sex.data.y, strict=False,
         )
     )
     assert stamford_sex == {"Male": 2}
@@ -221,7 +221,7 @@ def test_ckd_calculator_extract_stats():
     stats = calculator.extract_stats()
 
     ages = dict(
-        zip(stats.all.prevalent_ckd_age.data.x, stats.all.prevalent_ckd_age.data.y)
+        zip(stats.all.prevalent_ckd_age.data.x, stats.all.prevalent_ckd_age.data.y, strict=False)
     )
     assert ages == {"35-54": 1, "55-74": 1, "75+": 1}
     assert stats.all.metadata.population == 3

@@ -1,13 +1,12 @@
-"""
-Allen's interval algebra: all 13 relationships between pairs of intervals.
+"""Allen's interval algebra: all 13 relationships between pairs of intervals.
 
 Implemented via a self-join so every record is compared against every other
 record within the same group (e.g. ukrdcid), not just its neighbour.
 """
 
 import datetime as dt
-from typing import Optional
 
+import numpy as np
 import pandas as pd
 
 
@@ -16,10 +15,9 @@ def allen_relationships(
     group_col: str = "ukrdcid",
     start_col: str = "fromtime",
     end_col: str = "totime",
-    recovery_window: Optional[dt.timedelta] = None,
+    recovery_window: dt.timedelta | None = None,
 ) -> pd.DataFrame:
-    """
-    Compute all 13 Allen interval relationships for every pair of records
+    """Compute all 13 Allen interval relationships for every pair of records
     within each group via a self-join.
 
     The recovery_window, if provided, is absorbed into the "before"/"after"
@@ -56,10 +54,8 @@ def allen_relationships(
     s_i, e_i = merged[f"{start_col}_i"], merged[f"{end_col}_i"]
     s_j, e_j = merged[f"{start_col}_j"], merged[f"{end_col}_j"]
 
-    if recovery_window is not None:
-        rw = recovery_window
-    else:
-        rw = dt.timedelta(0)
+    # rw defaults to zero so the "before"/"after" relations are strict
+    rw = recovery_window if recovery_window is not None else dt.timedelta(0)
 
     # All 13 Allen relationships
     conditions = [
@@ -83,7 +79,8 @@ def allen_relationships(
         (s_i > s_j) & (e_i < e_j),
         # i finishes j: i starts after j, same end
         (s_i > s_j) & (e_i == e_j),
-        # i is overlapped by j: j starts before i, i starts before j ends, j ends before i ends
+        # i is overlapped by j: j starts before i, i starts before j
+        # ends, j ends before i ends
         (s_j < s_i) & (e_j > s_i) & (e_j < e_i),
         # i is met by j: j ends exactly when i starts
         (e_j == s_i) & (s_i != s_j),
@@ -106,8 +103,6 @@ def allen_relationships(
         "met by",
         "after",
     ]
-
-    import numpy as np
 
     merged["relationship"] = np.select(conditions, choices, default="unknown")
 

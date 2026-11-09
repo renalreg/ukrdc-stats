@@ -16,7 +16,6 @@ from ukrdc_stats.exceptions import EmptyCohortError
 from ukrdc_stats.labellers.base import nhs_number
 from ukrdc_stats.utils.database import get_sessionmaker
 
-
 config = dotenv_values(".env")
 KEYPATH = config.get("UKRDC_STATS_KEYPATH")
 
@@ -29,18 +28,18 @@ TEMPLATE_PATH: Path = Path("templates/incidence_report_template.xlsx")
 
 CENTRES = [
     # live
-    #"RAJ",   # MSE
-    "RAQ01", # Lister
-    "RCSLB", # Nottingham
-    "RH8",   # RD&E
-    "RHW01", # Reading
-    "RK7CC", # Sheffield
-    "RL403", # Wolverhampton
-    "RNJ00", # Barts
-    "RFPFG", # Derby
-    "RBD01", # Dorset
-    "RLZ01", # Shrewsbury
-    "RP5",   # Doncaster
+    # "RAJ",   # MSE
+    "RAQ01",  # Lister
+    "RCSLB",  # Nottingham
+    "RH8",  # RD&E
+    "RHW01",  # Reading
+    "RK7CC",  # Sheffield
+    "RL403",  # Wolverhampton
+    "RNJ00",  # Barts
+    "RFPFG",  # Derby
+    "RBD01",  # Dorset
+    "RLZ01",  # Shrewsbury
+    "RP5",  # Doncaster
     "99RQR13",
     "RAE05",
     "RCB55",
@@ -97,9 +96,7 @@ def main():
             krt_frames: list[pd.DataFrame] = []
             ckd_frames: list[pd.DataFrame] = []
 
-            for quarter in range(
-                QUARTER_START - 1, QUARTER_START + NO_OF_QUARTERS - 1
-            ):
+            for quarter in range(QUARTER_START - 1, QUARTER_START + NO_OF_QUARTERS - 1):
                 current_quarter = (quarter % 4) + 1
                 current_year = YEAR_START + quarter // 4
                 quarter_start = dt.datetime(current_year, current_quarter * 3 - 2, 1)
@@ -112,8 +109,7 @@ def main():
 
                 # Incident KRT cohort
                 print(
-                    f"  {centre} Q{current_quarter} {current_year}: "
-                    f"extracting KRT...",
+                    f"  {centre} Q{current_quarter} {current_year}: extracting KRT...",
                     flush=True,
                 )
                 try:
@@ -133,7 +129,10 @@ def main():
                     )
 
                 # Prevalent CKD cohort
-                print(f"  {centre} Q{current_quarter} {current_year}: extracting CKD...", flush=True)
+                print(
+                    f"  {centre} Q{current_quarter} {current_year}: extracting CKD...",
+                    flush=True,
+                )
                 try:
                     ckd_cohort = ckd_prevalent(session, centre, quarter_end)
                     ckd_cohort = nhs_number(ckd_cohort, session, include_type=True)
@@ -153,7 +152,9 @@ def main():
             shutil.copy2(TEMPLATE_PATH, out_path)
 
             with pd.ExcelWriter(
-                out_path, mode="a", engine="openpyxl",
+                out_path,
+                mode="a",
+                engine="openpyxl",
                 if_sheet_exists="replace",
             ) as writer:
                 if krt_frames:

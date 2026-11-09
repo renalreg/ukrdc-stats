@@ -1,21 +1,19 @@
 import pandas as pd
-from sqlalchemy.orm import Session
 from sqlalchemy import select
-
-from ukrdc_stats.labellers.query import (
-    query_postcodes,
-    query_paed_centres,
-    query_ons_postcode_data,
-)
+from sqlalchemy.orm import Session
 from ukrdc_sqla.ukrdc import FacilityRelationship
+
 from ukrdc_stats.exceptions import MissingColumnError
+from ukrdc_stats.labellers.query import (
+    query_ons_postcode_data,
+    query_paed_centres,
+    query_postcodes,
+)
 
 
 def imd(session: Session, patient_cohort: pd.DataFrame) -> pd.DataFrame:
+    """Calculate the Index of Multiple Deprivation (IMD) for each patient.
     """
-    Calculate the Index of Multiple Deprivation (IMD) for each patient.
-    """
-
     # query patient postcodes
     postcodes = query_postcodes(session, patient_cohort["pid"].tolist())
     postcodes["postcode_norm"] = (
@@ -55,8 +53,7 @@ def main_satellite_centres(
     outlier_mapping_mode: str = "passthrough",
     drop_outliers: bool = False,
 ) -> pd.DataFrame:
-    """
-    This function does the heavy lifting of transforming sending facilities and
+    """This function does the heavy lifting of transforming sending facilities and
     healthcarefacility codes into centre codes and satellite codes. It takes
     the unaggregated data as the input. The best way to do this still needs
     debating in the near term we will implement the following behaviour:
@@ -72,7 +69,6 @@ def main_satellite_centres(
 
 
     """
-
     for column in ("sendingfacility", "healthcarefacilitycode"):
         if column not in patient_cohort.columns:
             raise MissingColumnError(f"patient_cohort is missing column '{column}'")
@@ -200,11 +196,9 @@ def main_satellite_centres(
 
 
 def adult_paed(session: Session, patient_cohort: pd.DataFrame) -> pd.DataFrame:
-    """
-    Flag if centre is a paediatric centre. For any paed centre that are mapped
+    """Flag if centre is a paediatric centre. For any paed centre that are mapped
     via the main-satellite model recode paed as main centre.
     """
-
     for column in ("centre_code", "satellite_code"):
         if column not in patient_cohort.columns:
             raise MissingColumnError(f"patient_cohort is missing column '{column}'")

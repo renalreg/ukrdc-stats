@@ -1,5 +1,4 @@
-"""
-Functions to calculate patient cohort statistics.
+"""Functions to calculate patient cohort statistics.
 Pydantic classes to return nice plotly friendly output.
 
 The DemographicStatsCalculator available prior to version 3.0.0 has been

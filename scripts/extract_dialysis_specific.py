@@ -2,18 +2,17 @@
 Example of custom cohort which extends the base cohorts
 """
 
-
-import pandas as pd
 import datetime as dt
 from pathlib import Path
+
+import pandas as pd
 from dotenv import dotenv_values
 
 from ukrdc_stats.cohorts.base import krt_prevalent
+from ukrdc_stats.labellers.clinical import hd_dialysis_frequency, vascular_access
 from ukrdc_stats.labellers.geography import adult_paed
-from ukrdc_stats.labellers.clinical import vascular_access, hd_dialysis_frequency
-from ukrdc_stats.utils.database import get_sessionmaker
 from ukrdc_stats.utils.data import aggregate_data
-
+from ukrdc_stats.utils.database import get_sessionmaker
 
 config = dotenv_values(".env")
 KEYPATH = config.get("UKRDC_STATS_KEYPATH")
@@ -21,30 +20,31 @@ KEYPATH = config.get("UKRDC_STATS_KEYPATH")
 YEAR_START: int = 2022
 QUARTER_START: int = 1
 NO_OF_QUARTERS: int = 12
-OUTPUT_DIR: Path = Path(".do_not_commit") 
+OUTPUT_DIR: Path = Path(".do_not_commit")
 SERVER: str = "ukrdc_live"
 OUTPUT_FILE: Path = Path(f"dialysis_one_year_{SERVER}_{YEAR_START}.csv")
 
 CENTRES = [
-        # live
-    "RAJ",   # MSE
-    "RAQ01", # Lister
-    "RCSLB", # Nottingham
-    "RH8",   # RD&E
-    "RHW01", # Reading
-    "RK7CC", # Sheffield
-    "RL403", # Wolverhampton
-    "RNJ00", # Barts
-    "RFPFG", # Derby
-    "RBD01", # Dorset
-    "RLZ01", # Shrewsbury
-    "RP5",   # Doncaster
+    # live
+    "RAJ",  # MSE
+    "RAQ01",  # Lister
+    "RCSLB",  # Nottingham
+    "RH8",  # RD&E
+    "RHW01",  # Reading
+    "RK7CC",  # Sheffield
+    "RL403",  # Wolverhampton
+    "RNJ00",  # Barts
+    "RFPFG",  # Derby
+    "RBD01",  # Dorset
+    "RLZ01",  # Shrewsbury
+    "RP5",  # Doncaster
     "99RQR13",
     "RAE05",
     "RCB55",
     "RF201",
     "RQR13",
 ]
+
 
 def hd_one_year(
     session,
@@ -55,17 +55,12 @@ def hd_one_year(
     """
     Cohort of prevalent incident HD patients who have been on thier current
     dialysis modality for at least a year. In it's current iteration it might
-    be relatively sensitive to how treatments are coded. This is also an 
-    example of how the base cohort generating functions might be extended to 
-    produce custom cohorts. 
+    be relatively sensitive to how treatments are coded. This is also an
+    example of how the base cohort generating functions might be extended to
+    produce custom cohorts.
     """
 
-
-    base_cohort = krt_prevalent(
-        session,
-        centre,
-        prevalence_point
-    )
+    base_cohort = krt_prevalent(session, centre, prevalence_point)
 
     # generate a slice of the cohort which focuses on a subset of the ichd patients
     base_cohort["time_since_start"] = prevalence_point - base_cohort["fromtime"]
@@ -129,6 +124,7 @@ def main():
     output.to_csv(OUTPUT_DIR / OUTPUT_FILE, index=False)
 
     print(output.head())
+
 
 if __name__ == "__main__":
     main()

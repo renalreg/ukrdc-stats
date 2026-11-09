@@ -4,9 +4,9 @@ Runs the prevalent calculator for each (prevalence_point, facility) pair in
 the reference data, groups by modality (collapsing HHD into HD), and writes
 the percentage difference to a CSV in tests/test_statistical_accuracy/output/.
 """
-from pathlib import Path
 
 import datetime as dt
+from pathlib import Path
 
 import pandas as pd
 from dotenv import dotenv_values
@@ -55,15 +55,17 @@ def run_comparison(server: str, ref_csv: Path) -> pd.DataFrame:
             prev_point = p["prevalence_point"]
 
             # All facilities at this prevalence point
-            facilities = ref_data[
-                ref_data["prevalence_point"] == prev_point
-            ]["sendingfacility"].unique()
+            facilities = ref_data[ref_data["prevalence_point"] == prev_point][
+                "sendingfacility"
+            ].unique()
 
             # Fetch and concatenate all facility cohorts for this prevalence point
             all_cohorts = []
             for facility in facilities:
                 try:
-                    cohort = krt_prevalent(session, facility, prevalence_point=prev_point)
+                    cohort = krt_prevalent(
+                        session, facility, prevalence_point=prev_point
+                    )
                     all_cohorts.append(cohort)
                 except EmptyCohortError:
                     continue
@@ -72,10 +74,16 @@ def run_comparison(server: str, ref_csv: Path) -> pd.DataFrame:
                 # No data for any facility — still emit zero rows
                 ref_subset = ref_data[ref_data["prevalence_point"] == prev_point]
                 for _, ref_row in ref_subset.iterrows():
-                    results.append(_make_row(
-                        server, prev_point, ref_row["sendingfacility"],
-                        ref_row["modality"], int(ref_row["count"]), 0,
-                    ))
+                    results.append(
+                        _make_row(
+                            server,
+                            prev_point,
+                            ref_row["sendingfacility"],
+                            ref_row["modality"],
+                            int(ref_row["count"]),
+                            0,
+                        )
+                    )
                 continue
 
             combined_cohort = pd.concat(all_cohorts, ignore_index=True)
@@ -104,9 +112,16 @@ def run_comparison(server: str, ref_csv: Path) -> pd.DataFrame:
                 ]
                 calc_count = int(match["count"].sum())
 
-                results.append(_make_row(
-                    server, prev_point, facility, modality, ref_count, calc_count,
-                ))
+                results.append(
+                    _make_row(
+                        server,
+                        prev_point,
+                        facility,
+                        modality,
+                        ref_count,
+                        calc_count,
+                    )
+                )
 
     return pd.DataFrame(results)
 

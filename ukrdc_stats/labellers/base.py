@@ -1,7 +1,6 @@
 import pandas as pd
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-
 from ukrdc_sqla.ukrdc import PatientNumber
 
 
@@ -10,8 +9,7 @@ def nhs_number(
     session: Session,
     include_type: bool = False,
 ) -> pd.DataFrame:
-    """
-    Attaches the NHS number (or CHI/HSC equivalent) to each patient in the
+    """Attaches the NHS number (or CHI/HSC equivalent) to each patient in the
     cohort by querying the PatientNumber table. Where an NHS number is not
     available, falls back to CHI then HSC, matching the pattern used in
     incident_patients_year_comparison.py.

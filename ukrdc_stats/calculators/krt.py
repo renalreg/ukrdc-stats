@@ -1,5 +1,4 @@
-"""
-KRT stats calculator.
+"""KRT stats calculator.
 
 Recreates the KRTStatsCalculator interface used by the UKRDC API on top of
 the version 3.0.0 cohort and labeller functions. The output is limited to
@@ -8,7 +7,6 @@ API previously served are returned as "Under maintenance" placeholders.
 """
 
 import datetime as dt
-from typing import Dict, Optional
 
 import pandas as pd
 from sqlalchemy.orm import Session
@@ -37,23 +35,23 @@ ROW_ATTRIBUTES = ["age", "ethnicity", "sex", "dialtplt", "assessmentoutcome"]
 
 class KRTStatsCalculator:
     """Calculates demographic statistics for the incident and prevalent KRT
-    cohorts of a renal centre over a given time window."""
+    cohorts of a renal centre over a given time window.
+    """
 
     def __init__(
         self,
         session: Session,
         facility: str,
-        from_time: Optional[dt.datetime] = None,
-        to_time: Optional[dt.datetime] = None,
+        from_time: dt.datetime | None = None,
+        to_time: dt.datetime | None = None,
     ):
-        """
-        Args:
-            session (Session): UKRDC database session.
-            facility (str): Renal centre code.
-            from_time (Optional[dt.datetime]): Start of the incidence window.
-                Defaults to a year before to_time.
-            to_time (Optional[dt.datetime]): End of the incidence window and
-                prevalence point. Defaults to now.
+        """Args:
+        session (Session): UKRDC database session.
+        facility (str): Renal centre code.
+        from_time (Optional[dt.datetime]): Start of the incidence window.
+            Defaults to a year before to_time.
+        to_time (Optional[dt.datetime]): End of the incidence window and
+            prevalence point. Defaults to now.
         """
         self.session = session
         self.facility = facility
@@ -63,12 +61,11 @@ class KRTStatsCalculator:
         if self.from_time > self.to_time:
             raise ValueError("from_time must be before to_time")
 
-        self._patient_cohort: Optional[pd.DataFrame] = None
-        self._aggregated: Optional[pd.DataFrame] = None
+        self._patient_cohort: pd.DataFrame | None = None
+        self._aggregated: pd.DataFrame | None = None
 
     def extract_patient_cohort(self) -> None:
-        """
-        Extract the incident and prevalent cohorts for the centre, combine
+        """Extract the incident and prevalent cohorts for the centre, combine
         them and label with the demographic attributes.
         """
         incident = krt_incident(
@@ -97,8 +94,7 @@ class KRTStatsCalculator:
 
     @property
     def aggregated(self) -> pd.DataFrame:
-        """
-        Long format headcounts split by satellite unit and incident/prevalent
+        """Long format headcounts split by satellite unit and incident/prevalent
         cohort. Calculated once and reused by all the stats builders.
         """
         if self._aggregated is None:
@@ -118,8 +114,7 @@ class KRTStatsCalculator:
         return cohort["ukrdcid"].nunique()
 
     def extract_satellite_stats(self, unit: str = "all") -> KRTStats:
-        """
-        Build the KRTStats for a single satellite unit, or for the whole
+        """Build the KRTStats for a single satellite unit, or for the whole
         centre by re-aggregating over the satellite split.
 
         Args:
@@ -194,22 +189,20 @@ class KRTStatsCalculator:
         )
 
     def extract_stats(self) -> UnitLevelKRTStats:
-        """
-        Extract demographic stats for the whole centre and each satellite unit.
+        """Extract demographic stats for the whole centre and each satellite unit.
 
         Returns:
             UnitLevelKRTStats: Stats for the whole centre and per unit.
         """
         units = sorted(self.aggregated["satellite_code"].dropna().unique())
-        unit_stats: Dict[str, KRTStats] = {
+        unit_stats: dict[str, KRTStats] = {
             unit: self.extract_satellite_stats(unit) for unit in units
         }
 
         return UnitLevelKRTStats(all=self.extract_satellite_stats(), units=unit_stats)
 
     def generate_cohort_report(self) -> BaseTable:
-        """
-        Return the aggregated long format headcounts, matching the shape of
+        """Return the aggregated long format headcounts, matching the shape of
         the CSV produced by scripts/extract_krt_demog.py.
 
         Returns:

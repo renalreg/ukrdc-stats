@@ -1,10 +1,8 @@
-"""
-Shared functions which turn the long-format output of aggregate_data into the
+"""Shared functions which turn the long-format output of aggregate_data into the
 Labelled2d models served by the API. Both the KRT and CKD calculators use
 these so the pivot logic only lives in one place.
 """
 
-from typing import Optional
 
 import pandas as pd
 
@@ -21,10 +19,9 @@ def build_labelled2d(
     title: str,
     summary: str,
     description: str,
-    filters: Optional[dict] = None,
+    filters: dict | None = None,
 ) -> Labelled2d:
-    """
-    Pivot one attribute of an aggregated long dataframe into a Labelled2d.
+    """Pivot one attribute of an aggregated long dataframe into a Labelled2d.
 
     Args:
         aggregated (pd.DataFrame): Long format output of aggregate_data with
@@ -41,7 +38,6 @@ def build_labelled2d(
     Returns:
         Labelled2d: Counts of each variable of the attribute.
     """
-
     filtered = aggregated[aggregated["attribute"] == attribute]
     for column, value in (filters or {}).items():
         filtered = filtered[filtered[column] == value]
@@ -68,8 +64,7 @@ def build_labelled2d(
 
 
 def under_maintenance(title: str) -> Labelled2d:
-    """
-    Placeholder for stats which have been retired but whose fields are kept
+    """Placeholder for stats which have been retired but whose fields are kept
     for API compatibility.
 
     Args:
@@ -78,7 +73,6 @@ def under_maintenance(title: str) -> Labelled2d:
     Returns:
         Labelled2d: Empty dataset flagged as under maintenance.
     """
-
     return Labelled2d(
         metadata=Labelled2dMetadata(
             title=title[:40],

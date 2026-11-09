@@ -1,5 +1,4 @@
-"""
-Pydantic models returned by the stats calculators.
+"""Pydantic models returned by the stats calculators.
 
 Only the models required by the UKRDC API are kept here; they are lifted from
 the ukrdc_stats/models package which existed prior to version 3.0.0. Everything
@@ -8,13 +7,13 @@ lives in one module so both calculators share a single import.
 
 import csv
 import datetime as dt
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import pandas as pd
 from pydantic import BaseModel, ConfigDict, Field
 
 Number = int | float | None
-RowData = List[Any]
+RowData = list[Any]
 
 
 def _to_camel(snake_str: str) -> str:
@@ -28,17 +27,15 @@ class JSONModel(BaseModel):
 
 
 class AxisLabels2d(JSONModel):
-    """
-    Generic class for any x/y axis labels
+    """Generic class for any x/y axis labels
     """
 
-    x: Optional[str] = None
-    y: Optional[str] = None
+    x: str | None = None
+    y: str | None = None
 
 
 class Basic2dMetadata(JSONModel):
-    """
-    Stats/plot metadata generic to all 2D data sets
+    """Stats/plot metadata generic to all 2D data sets
     """
 
     title: str = Field(..., description="Title of plot or statistics", max_length=40)
@@ -51,44 +48,41 @@ class Basic2dMetadata(JSONModel):
         ...,
         description="In depth description of what exactly is represented and how it has been calculated",
     )
-    axis_titles: Optional[AxisLabels2d] = Field(
+    axis_titles: AxisLabels2d | None = Field(
         None, description="x and y labels for data"
     )
-    population_size: Optional[int] = Field(
+    population_size: int | None = Field(
         None,
         description="Total population size of cohort used for statistic e.g total number of patients in pie chart",
     )
 
 
 class Labelled2dData(JSONModel):
-    """
-    x-y data for a labelled plot
+    """x-y data for a labelled plot
     """
 
-    x: List[str] = Field(..., description="list of x data points")
-    y: List[Number] = Field(..., description="list of y data points")
-    error_y: Optional[List[Number]] = Field(
+    x: list[str] = Field(..., description="list of x data points")
+    y: list[Number] = Field(..., description="list of y data points")
+    error_y: list[Number] | None = Field(
         None, description="Uncertainty in y data points"
     )
 
 
 class Labelled2dMetadata(Basic2dMetadata):
-    """
-    Metadata for a labelled plot.
+    """Metadata for a labelled plot.
 
     x-axis is always a string/label, so no x-axis units are required.
     y-axis is numeric, and so units are optional here.
     """
 
-    coding_standard_x: Optional[str] = Field(
+    coding_standard_x: str | None = Field(
         None, description="UKRDC coding standard of x data points"
     )
-    units_y: Optional[str] = Field(None, description="Units of y data point")
+    units_y: str | None = Field(None, description="Units of y data point")
 
 
 class Labelled2d(JSONModel):
-    """
-    Return data class for a labelled plot
+    """Return data class for a labelled plot
     """
 
     metadata: Labelled2dMetadata = Field(
@@ -100,18 +94,17 @@ class Labelled2d(JSONModel):
 
 
 class BaseTable(JSONModel):
-    headers: List[str] = Field(
+    headers: list[str] = Field(
         ..., description="Column headers describing the data contained in each row"
     )
-    rows: List[RowData] = Field(
+    rows: list[RowData] = Field(
         ..., description="Rows of the table containing the data"
     )
 
     def to_csv(
         self, file_path: str, blank_na: bool = True, metadata: str = None
     ) -> None:
-        """
-        Serializes the BaseTable to a CSV file.
+        """Serializes the BaseTable to a CSV file.
 
         :param file_path: The path to the file where the CSV data will be written.
         """
@@ -135,7 +128,7 @@ class BaseTable(JSONModel):
 
 
 class KRTMetadata(JSONModel):
-    population: Optional[int] = Field(
+    population: int | None = Field(
         None,
         description="Number of patients in the cohort for KRT stats calculation",
     )
@@ -146,8 +139,7 @@ class KRTMetadata(JSONModel):
 
 
 class KRTStats(JSONModel):
-    """
-    Container class for the KRT demographic stats. Fields previously derived
+    """Container class for the KRT demographic stats. Fields previously derived
     from dialysis sessions are retained for API compatibility but only carry
     an "Under maintenance" placeholder.
     """
@@ -202,14 +194,14 @@ class KRTStats(JSONModel):
 
 class UnitLevelKRTStats(JSONModel):
     all: KRTStats
-    units: Dict[str, KRTStats]
+    units: dict[str, KRTStats]
 
 
 # CKD calculator models
 
 
 class CKDMetadata(JSONModel):
-    population: Optional[int] = Field(
+    population: int | None = Field(
         None,
         description="Number of patients in the prevalent CKD cohort",
     )
@@ -219,8 +211,7 @@ class CKDMetadata(JSONModel):
 
 
 class CKDStats(JSONModel):
-    """
-    Container class for the prevalent CKD demographic stats
+    """Container class for the prevalent CKD demographic stats
     """
 
     prevalent_ckd_age: Labelled2d = Field(
@@ -241,4 +232,4 @@ class CKDStats(JSONModel):
 
 class UnitLevelCKDStats(JSONModel):
     all: CKDStats
-    units: Dict[str, CKDStats]
+    units: dict[str, CKDStats]

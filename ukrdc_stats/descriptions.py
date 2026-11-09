@@ -1,9 +1,7 @@
-"""
-Module to contain the long descriptions for the pydantic output
+"""Module to contain the long descriptions for the pydantic output
 """
 
 from textwrap import dedent
-
 
 dialysis_general = """
 - Patients are queried on the basis of their treatment records overlapping the time window. 

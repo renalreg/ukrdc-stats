@@ -1,6 +1,8 @@
 import datetime as dt
+
 import pandas as pd
 from sqlalchemy.orm import Session
+
 from ukrdc_stats.exceptions import MissingColumnError
 from ukrdc_stats.labellers.query import query_results
 from ukrdc_stats.utils.data import egfr as calculate_egfr
@@ -10,13 +12,28 @@ def egfr(
     session: Session,
     patient_cohort: pd.DataFrame,
     prevalence_point: dt.datetime,
-    mode="min",
+    mode: str = "min",
 ) -> pd.DataFrame:
-    """
-    Appends the egfr for each patient based on mode. This can be either
-    calculated or lab reported.
-    """
+    """Append the egfr for each patient based on mode.
 
+    This can be either calculated or lab reported.
+
+    Args:
+        session (Session): UKRDC database session.
+        patient_cohort (pd.DataFrame): DataFrame containing patient data with
+            'pid', 'birthtime' and 'sex' columns.
+        prevalence_point (dt.datetime): Date the egfr is calculated at.
+        mode (str, optional): Which egfr result to keep per patient: "min",
+            "last" or "all". Defaults to "min".
+
+    Returns:
+        pd.DataFrame: DataFrame with the egfr_{mode} and egfr_date columns
+            added.
+
+    Raises:
+        MissingColumnError: If required columns are missing from the cohort.
+        NotImplementedError: If an unknown mode is passed.
+    """
     required_columns = {"pid", "birthtime", "sex"}
     missing_cols = required_columns - set(patient_cohort.columns)
     if missing_cols:
@@ -117,11 +134,3 @@ def egfr(
     )
 
     return patient_cohort
-
-
-def systolic():
-    pass
-
-
-def diastolic():
-    pass

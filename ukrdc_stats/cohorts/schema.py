@@ -1,5 +1,4 @@
-"""
-Version 3.0.0 of dashboard stats introduces pydantic style schemas the
+"""Version 3.0.0 of dashboard stats introduces pydantic style schemas the
 dataframes which are integral to the dashboard stats library. The purpose of
 this change is to introduce better type checking and try and eliminate some of
 the errors which arise from dataframes not having the expected columns.
