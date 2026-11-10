@@ -2,6 +2,7 @@
 
 import pandas as pd
 from sqlalchemy import and_, or_, select
+from sqlalchemy.dialects.postgresql import distinct_on
 from sqlalchemy.orm import Session
 from ukrdc_sqla.ukrdc import FacilityRelationship, PatientNumber, PatientRecord
 from ukrdc_sqla.utils.constants import RelationshipType
@@ -36,8 +37,10 @@ def pid_ni_map(session: Session, centres: list[str]) -> pd.DataFrame:
             PatientNumber.patientid,
             PatientNumber.organization,
         )
-        .distinct(
-            PatientNumber.pid, PatientNumber.patientid, PatientNumber.organization
+        .ext(
+            distinct_on(
+                PatientNumber.pid, PatientNumber.patientid, PatientNumber.organization
+            )
         )
         .join(PatientRecord, PatientNumber.pid == PatientRecord.pid)
         .outerjoin(
