@@ -15,6 +15,7 @@ from urllib.request import urlretrieve
 
 import pandas as pd
 from sqlalchemy import and_, func, or_, select
+from sqlalchemy.dialects.postgresql import distinct_on
 from sqlalchemy.orm import Session
 from ukrdc_sqla.ukrdc import (
     Address,
@@ -287,8 +288,12 @@ def query_careplanning(
         assessments_query = assessments_query.where(
             Assessment.assessmentstart < prevalence_point
         )
-        assessments_query = assessments_query.distinct(
-            XMLPatient.nationalid, XMLPatient.organization, XMLPatient.sendingfacility
+        assessments_query = assessments_query.ext(
+            distinct_on(
+                XMLPatient.nationalid,
+                XMLPatient.organization,
+                XMLPatient.sendingfacility,
+            )
         )
         assessments_query = assessments_query.order_by(
             XMLPatient.nationalid,
@@ -370,7 +375,7 @@ def query_vascular_access(
                     ]
                 )
             )
-            .distinct(DialysisSession.pid)
+            .ext(distinct_on(DialysisSession.pid))
             .order_by(DialysisSession.pid, DialysisSession.procedure_time.desc())
         )
 
@@ -407,7 +412,7 @@ def query_first_seen(
                 Treatment.pid.in_(chunk),
                 Treatment.admitreasoncode == "101",
             )
-            .distinct(Treatment.pid)
+            .ext(distinct_on(Treatment.pid))
             .order_by(Treatment.pid, Treatment.fromtime, Treatment.id)
         )
         results.extend(session.execute(query).all())
