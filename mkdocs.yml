@@ -1,0 +1,54 @@
+site_name: ukrdc-stats
+site_description: Statistics from the UKRDC database for the renal dashboard
+repo_url: https://github.com/renalreg/dashboard-stats
+
+theme:
+  name: material
+  features:
+    - navigation.sections
+    - navigation.top
+    - content.code.copy
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            docstring_style: google
+            docstring_options:
+              ignore_init_summary: true
+            show_source: true
+            show_root_heading: true
+            members_order: source
+            filters:
+              - "!^_"
+
+nav:
+  - Home: index.md
+  - Concepts:
+      - Cohorts: concepts/cohorts.md
+      - Labellers: concepts/labellers.md
+      - Utilities: concepts/utils.md
+  - API reference:
+      - Cohorts:
+          - Base: api/cohorts/base.md
+          - Query: api/cohorts/query.md
+          - Schema: api/cohorts/schema.md
+      - Labellers:
+          - Base: api/labellers/base.md
+          - Biomarkers: api/labellers/biomarkers.md
+          - Clinical: api/labellers/clinical.md
+          - Data Quality: api/labellers/data_quality.md
+          - Demographics: api/labellers/demographics.md
+          - Geography: api/labellers/geography.md
+          - Query: api/labellers/query.md
+      - Utilities: api/utils.md
+      - Validation: api/validation.md
+      - Legacy calculators:
+          - CKD: api/calculators/ckd.md
+          - KRT: api/calculators/krt.md
+          - Builders: api/calculators/builders.md
+          - Models: api/calculators/models.md
+  - Legacy: legacy/calculators.md
+  - Future work: future.md
