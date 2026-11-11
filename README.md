@@ -48,12 +48,19 @@ Install additional demo notebook dependencies with
 poetry install --with demo
 ```
 
+### Building the documentation
+
+```bash
+poetry install --with docs
+```
+
+Then, inside the activated `.venv`, run `mkdocs serve` for a live preview or `mkdocs build --strict` to check the build.
+The site is built from `docs/` and the docstrings. Config is in `mkdocs.yml`.
+
 ### Code Structure
 
-#### `models`
-
-Generic reusable Pydantic models (e.g. for plot types)
-
-#### `calculators`
-
-API-stable stats calculators
+- `cohorts`: patient-level base cohorts, validated with pandera schemas
+- `labellers`: reusable functions that add derived columns
+- `utils`: formulae, code mapping, aggregation and database helpers
+- `validation`: centre checks
+- `calculators`: legacy API layer, kept for compatibility. Do not add new functionality here

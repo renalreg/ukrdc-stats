@@ -122,6 +122,11 @@ They will be reinstated once reliable definitions are agreed.
 - Reduced the CKD query chunk size to avoid large PostgreSQL `IN` clause timeouts.
 - Fixed the CKD archive session helper so it returns an open session rather than one closed by a context manager.
 
+### Documentation
+
+- MkDocs site (`mkdocs.yml`, `docs/`) with concept guides for cohorts, labellers and utilities, plus an API reference generated from docstrings.
+- `calculators` is marked legacy throughout the docs.
+
 ### Demo / scripts
 
 - `demo/v3.0.0_changes_for_app_interface.ipynb` documents the new calculator API and example Plotly charts.
