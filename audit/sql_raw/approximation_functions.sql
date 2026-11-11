@@ -110,6 +110,9 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+
+
+
 -- Point-prevalence cohort for a single date.
 -- Returns every treatment row active on the supplied prevalence_point.
 
