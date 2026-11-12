@@ -9,3 +9,6 @@ The repo should have good unit test coverage of its functions.
 
 # Automated Edge Case Testing
 Very specific, story-based automated tests arise from edge cases and make the code robust against messy real-world data.
+
+# (Experimental) Synthetic data testing 
+The repo now uses pandera schemas this creates some new posibilities like monte carloing the code as the logic branches. 
