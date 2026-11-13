@@ -28,6 +28,16 @@ LIVE_FACILITIES = [
     "RLZ01",
 ]
 
+output_dir = Path("audit/data/output")
+
+SERVER = "ukrdc_live"
+YEAR = 2023
+
+config = dotenv_values(".env")
+KEYPATH = config.get("UKRDC_STATS_KEYPATH")
+
+REF_DATA_PATH = Path("audit/data/demog_2023.xlsx")
+
 
 def transform_ref_demog(ref_data: pd.DataFrame) -> pd.DataFrame:
     # ugly hardcoded transformation to match the format expected by the calculator
@@ -104,16 +114,6 @@ def transform_ref_demog(ref_data: pd.DataFrame) -> pd.DataFrame:
 
     return ref_demog
 
-
-SERVER = "ukrdc_live"
-YEAR = 2023
-
-config = dotenv_values(".env")
-KEYPATH = config.get("UKRDC_STATS_KEYPATH")
-
-REF_DATA_PATH = Path("tests/test_statistical_accuracy/data/demog_2023.xlsx")
-
-
 if not KEYPATH:
     raise RuntimeError(
         "Missing UKRDC_STATS_KEYPATH. Set it in your environment or in a .env file."
@@ -161,14 +161,16 @@ with get_sessionmaker(SERVER, keypath=KEYPATH)() as session:
         comparison_data["centre_code"].isin(LIVE_FACILITIES)
     ]
 
+    
+
+    comparison_data = comparison_data.dropna(subset=["count_ref"])
+    comparison_data["count_ukrdc"] = comparison_data["count_ukrdc"].fillna(0)
     comparison_data["diff"] = (
-        (comparison_data["count_ukrdc"] - comparison_data["count_ref"])
+        (comparison_data["count_ukrdc"][~comparison_data.count_ref.isna()] - comparison_data["count_ref"][~comparison_data.count_ref.isna()])
         .round(0)
         .astype(int)
     )
     print(comparison_data)
-
-    output_dir = Path("tests/test_statistical_accuracy/output")
     output_dir.mkdir(exist_ok=True)
 
     comparison_data.to_csv(

@@ -9,6 +9,8 @@ Todo:
 """
 
 import datetime as dt
+import warnings
+from typing import Literal
 
 import pandas as pd
 import pandera.pandas as pa
@@ -39,10 +41,50 @@ from ukrdc_stats.cohorts.schema import (
     krt_base_schema,
     krt_query_incident_schema,
     krt_query_prevalent_schema,
+    reversed_treatment_mask,
 )
-from ukrdc_stats.exceptions import EmptyCohortError
+from ukrdc_stats.exceptions import DataQualityError, EmptyCohortError
 from ukrdc_stats.utils.database import get_archive_sessionmaker
 from ukrdc_stats.utils.query import pid_ni_map
+
+InvalidRowPolicy = Literal["keep", "drop", "raise"]
+
+
+def apply_invalid_row_policy(
+    cohort: pd.DataFrame, on_invalid: InvalidRowPolicy, context: str
+) -> pd.DataFrame:
+    """Handle treatments which end before they start per the given policy.
+
+    Args:
+        cohort (pd.DataFrame): Raw query output.
+        on_invalid (InvalidRowPolicy): "drop" removes the offending records
+            with a warning, "keep" retains them with a warning, "raise"
+            raises DataQualityError carrying the offending records.
+        context (str): Label used in warnings, e.g. the centre code.
+
+    Returns:
+        pd.DataFrame: Cohort with the policy applied.
+    """
+    mask = reversed_treatment_mask(cohort)
+    if not mask.any():
+        return cohort
+
+    bad = cohort[mask]
+    pids = ", ".join(bad["pid"].astype(str).head(5).tolist())
+    if len(bad) > 5:
+        pids += "..."
+    message = f"{context}: {len(bad)} treatment(s) end before they start"
+    message += f" (pids: {pids})"
+
+    if on_invalid == "raise":
+        raise DataQualityError(message, bad)
+
+    if on_invalid == "drop":
+        warnings.warn(f"{message}; dropping", stacklevel=2)
+        return cohort[~mask]
+
+    warnings.warn(f"{message}; keeping", stacklevel=2)
+    return cohort
 
 
 @pa.check_output(krt_query_prevalent_schema)
@@ -52,8 +94,19 @@ def query_krt_prevalent(
     prevalence_point: dt.datetime,
     recovery_window: dt.timedelta = dt.timedelta(days=90),
     sending_extract: str = "UKRDC",
+    on_invalid: InvalidRowPolicy = "drop",
 ) -> krt_query_prevalent_schema:
     """Core query with the ukrdc data needed for a prevalent KRT cohort.
+
+    Args:
+        session (Session): UKRDC session.
+        facility (str): Renal centre code.
+        prevalence_point (dt.datetime): Point the cohort is calculated at.
+        recovery_window (dt.timedelta): Treatments within this window of the
+            prevalence point are included so timelines chain correctly.
+        sending_extract (str): Sending extract to filter patient records by.
+        on_invalid (InvalidRowPolicy): How to handle treatments which end
+            before they start; see apply_invalid_row_policy.
 
     Returns:
         krt_query_prevalent_schema: Patient cohort dataframe
@@ -109,7 +162,11 @@ def query_krt_prevalent(
     if not data:
         raise EmptyCohortError
 
-    return pd.DataFrame(data)
+    cohort = apply_invalid_row_policy(pd.DataFrame(data), on_invalid, facility)
+    if cohort.empty:
+        raise EmptyCohortError
+
+    return cohort
 
 
 @pa.check_output(krt_query_incident_schema)
@@ -121,6 +178,7 @@ def query_krt_incident(
     recovery_window: dt.timedelta = dt.timedelta(days=90),
     sending_extract: str = "UKRDC",
     ukrdcids: list[str] | None = None,
+    on_invalid: InvalidRowPolicy = "drop",
 ) -> krt_base_schema:
     """Core query with the ukrdc data needed for an incident KRT cohort.
 
@@ -136,6 +194,8 @@ def query_krt_incident(
             ukrdcids. The filter is applied on the outer query so all
             treatment rows for a matching patient are kept intact for
             timeline chaining.
+        on_invalid (InvalidRowPolicy): How to handle treatments which end
+            before they start; see apply_invalid_row_policy.
 
     Returns:
         krt_base_schema: Patient cohort dataframe
@@ -292,7 +352,11 @@ def query_krt_incident(
     if not data:
         raise EmptyCohortError
 
-    return pd.DataFrame(data)
+    cohort = apply_invalid_row_policy(pd.DataFrame(data), on_invalid, centre_code)
+    if cohort.empty:
+        raise EmptyCohortError
+
+    return cohort
 
 
 @pa.check_output(demog_base_schema)

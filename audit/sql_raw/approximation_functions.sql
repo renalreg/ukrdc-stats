@@ -45,9 +45,8 @@ BEGIN
         FROM eligible_patients ep
         INNER JOIN treatment t ON t.pid = ep.pid
         INNER JOIN modality_codes mc ON t.admitreasoncode = mc.registry_code
-        WHERE t.fromtime >= cohort_start
-          AND t.fromtime < cohort_end
-          AND mc.registry_code_type IN ('TX', 'HD', 'PD')
+        WHERE
+          mc.registry_code_type IN ('TX', 'HD', 'PD')
         ORDER BY ep.pid, t.fromtime ASC, t.totime DESC NULLS FIRST
     ),
     t2 AS (
@@ -77,8 +76,8 @@ BEGIN
                t1.deathtime,
                t1.window_start,
                t1.treatment_centre_start,
-               t1.t1_fromtime,
-               t1.t1_totime,
+               t1.t1_fromtime AS firsttreatment_fromtime,
+               t1.t1_totime AS firsttreatment_totime,
                t1.modality_start,
                t1.treatment_type_start,
                t1.acute,
@@ -106,9 +105,15 @@ BEGIN
            p.treatment_type_start,
            p.discharge_90days
     FROM patients p
+    WHERE
+        p.firsttreatment_fromtime >= cohort_start
+        AND p.firsttreatment_fromtime < cohort_end
     ORDER BY p.sendingfacility, p.window_start;
 END;
 $$ LANGUAGE plpgsql;
+
+
+
 
 -- Point-prevalence cohort for a single date.
 -- Returns every treatment row active on the supplied prevalence_point.

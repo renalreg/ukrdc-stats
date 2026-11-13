@@ -49,7 +49,7 @@ CENTRES = [
 
 
 def main():
-    with get_sessionmaker(SERVER, keypath=KEYPATH, caching=True)() as session:
+    with get_sessionmaker(SERVER, keypath=KEYPATH, caching=False)() as session:
         quarterly_reports = []
         for quarter in range(QUARTER_START - 1, QUARTER_START + NO_OF_QUARTERS - 1):
             # Calculate the start and end times to calculate for
@@ -93,7 +93,6 @@ def main():
             quarterly_reports.append(combined)
 
     combined = pd.concat(quarterly_reports)
-
     output = aggregate_data(
         cohort_wide=combined,
         column_attributes=[

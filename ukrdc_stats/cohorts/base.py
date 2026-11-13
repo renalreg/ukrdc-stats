@@ -10,7 +10,12 @@ import pandas as pd
 import pandera.pandas as pa
 from sqlalchemy.orm import Session
 
-from ukrdc_stats.cohorts.query import query_ckd, query_krt_incident, query_krt_prevalent
+from ukrdc_stats.cohorts.query import (
+    InvalidRowPolicy,
+    query_ckd,
+    query_krt_incident,
+    query_krt_prevalent,
+)
 from ukrdc_stats.cohorts.schema import (
     ckd_prevalent_schema,
     krt_incident_schema,
@@ -367,6 +372,7 @@ def krt_incident(
     recovery_window: dt.timedelta = dt.timedelta(days=90),
     sending_extract: str = "UKRDC",
     ukrdcids: list[str] | None = None,
+    on_invalid: InvalidRowPolicy = "drop",
 ) -> krt_incident_schema:
     """Get the incident KRT cohort for a centre, its satellites and date range.
 
@@ -383,6 +389,10 @@ def krt_incident(
         ukrdcids (Optional[list[str]], optional): Restrict the cohort to
             these ukrdcids (within the centre's eligible patients).
             Defaults to None.
+        on_invalid (InvalidRowPolicy, optional): How to handle treatments
+            which end before they start: "drop" removes them with a warning,
+            "keep" retains them with a warning, "raise" raises
+            DataQualityError. Defaults to "drop".
     """
     validate_centre(session, centre)
 
@@ -401,6 +411,7 @@ def krt_incident(
         recovery_window,
         sending_extract,
         ukrdcids,
+        on_invalid=on_invalid,
     )
     base_cohort["dialtplt"] = base_cohort["registry_code_type"].copy()
     base_cohort.loc[
@@ -445,6 +456,7 @@ def krt_prevalent(
     facility: str,
     prevalence_point: dt.datetime,
     sending_extract: str = "UKRDC",
+    on_invalid: InvalidRowPolicy = "drop",
 ) -> krt_prevalent_schema:
     """Get the prevalent KRT cohort for a given facility and prevalence point.
 
@@ -454,12 +466,18 @@ def krt_prevalent(
         prevalence_point (dt.datetime): Prevalence point
         sending_extract (str, optional): Sending extract to filter patient
             records by, e.g. "UKRR". Defaults to "UKRDC".
+        on_invalid (InvalidRowPolicy, optional): How to handle treatments
+            which end before they start. Defaults to "drop".
 
     Returns:
         krt_prevalent_schema: Prevalent KRT cohort
     """
     base_cohort = query_krt_prevalent(
-        session, facility, prevalence_point, sending_extract=sending_extract
+        session,
+        facility,
+        prevalence_point,
+        sending_extract=sending_extract,
+        on_invalid=on_invalid,
     )
     base_cohort["dialtplt"] = base_cohort["registry_code_type"]
     base_cohort.loc[

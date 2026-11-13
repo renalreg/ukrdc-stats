@@ -9,11 +9,22 @@ which columns can be null but pandera provides many much more sophisticated
 options here.
 """
 
-from typing import ClassVar
+from typing import ClassVar, cast
 
 import pandas as pd
 import pandera.pandas as pa
 from pandera.typing import Series
+
+
+def reversed_treatment_mask(df: pd.DataFrame) -> Series[bool]:
+    """Boolean mask of treatments which end before they start.
+
+    Only rows with both times present are compared: open treatments and
+    records missing a fromtime are never flagged.
+    """
+    comparable = df["fromtime"].notna() & df["totime"].notna()
+    reversed_dates = df.loc[comparable, "fromtime"] > df.loc[comparable, "totime"]
+    return cast(Series[bool], reversed_dates.reindex(df.index, fill_value=False))
 
 
 class krt_base_schema(pa.DataFrameModel):
@@ -36,11 +47,16 @@ class krt_base_schema(pa.DataFrameModel):
     fromtime: Series[pa.DateTime]
     totime: Series[pa.DateTime] = pa.Field(nullable=True)
 
-    @pa.dataframe_check
+    @pa.dataframe_check(raise_warning=True)
     def fromtime_before_totime(cls, df: pd.DataFrame) -> Series[bool]:
-        """Check closed treatments end after they start; open ones may be NaT."""
+        """Check closed treatments end after they start; open ones may be NaT.
+
+        The check warns rather than raising so that the caller's policy
+        (see query.on_invalid) decides whether offending records are kept,
+        dropped or raised on.
+        """
         # open treatments have no totime; closed ones must end after they start
-        return df["totime"].isna() | (df["fromtime"] <= df["totime"])
+        return cast(Series[bool], ~reversed_treatment_mask(df))
 
     class Config:
         """Pandera model configuration."""
