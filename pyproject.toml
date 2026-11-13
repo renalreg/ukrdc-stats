@@ -155,6 +155,9 @@ ignore = [
     "PL", "SIM", "T20", "ERA", "A", "FBT", "TD", "FIX", "SLF", "INP", "PGH",
     "RSE", "FA", "UP", "C4",
 ]
+# audit scripts are live-DB console tools; prints and sanity asserts are the
+# point, and the folder is not an importable package
+"audit/**" = ["INP001", "S101", "T201"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
