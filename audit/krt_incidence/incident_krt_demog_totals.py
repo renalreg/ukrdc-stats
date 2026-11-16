@@ -114,6 +114,7 @@ def transform_ref_demog(ref_data: pd.DataFrame) -> pd.DataFrame:
 
     return ref_demog
 
+
 if not KEYPATH:
     raise RuntimeError(
         "Missing UKRDC_STATS_KEYPATH. Set it in your environment or in a .env file."
@@ -161,12 +162,13 @@ with get_sessionmaker(SERVER, keypath=KEYPATH)() as session:
         comparison_data["centre_code"].isin(LIVE_FACILITIES)
     ]
 
-    
-
     comparison_data = comparison_data.dropna(subset=["count_ref"])
     comparison_data["count_ukrdc"] = comparison_data["count_ukrdc"].fillna(0)
     comparison_data["diff"] = (
-        (comparison_data["count_ukrdc"][~comparison_data.count_ref.isna()] - comparison_data["count_ref"][~comparison_data.count_ref.isna()])
+        (
+            comparison_data["count_ukrdc"][~comparison_data.count_ref.isna()]
+            - comparison_data["count_ref"][~comparison_data.count_ref.isna()]
+        )
         .round(0)
         .astype(int)
     )

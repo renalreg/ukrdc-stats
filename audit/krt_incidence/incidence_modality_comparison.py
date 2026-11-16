@@ -36,7 +36,8 @@ if not KEYPATH:
 
 def run_comparison(server: str, ref_csv: Path) -> pd.DataFrame:
     """Run krt_incident for all facilities per quarter, concatenate the
-    cohorts, aggregate with aggregate_data, and compare to the reference CSV."""
+    cohorts, aggregate with aggregate_data, and compare to the reference CSV.
+    """
     ref_data = pd.read_csv(ref_csv)
 
     # Parse dates: quarter_start is dd/mm/yyyy, quarter_end is dd/mm/yyyy hh:mm

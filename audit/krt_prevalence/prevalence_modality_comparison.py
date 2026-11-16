@@ -36,7 +36,8 @@ if not KEYPATH:
 
 def run_comparison(server: str, ref_csv: Path) -> pd.DataFrame:
     """Run krt_prevalent for all facilities per prevalence_point, concatenate
-    the cohorts, aggregate with aggregate_data, and compare to the reference CSV."""
+    the cohorts, aggregate with aggregate_data, and compare to the reference CSV.
+    """
     ref_data = pd.read_csv(ref_csv)
 
     # Parse dates: prevalence_point is dd/mm/yyyy
