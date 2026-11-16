@@ -50,7 +50,7 @@ def download_ons_address_data() -> None:
     zip_path = cache_dir.parent / "ons_data.zip"
     zip_path.parent.mkdir(parents=True, exist_ok=True)
 
-    urlretrieve(ONS_ADDRESS_DATA_URL, zip_path)  # noqa: S310
+    urlretrieve(ONS_ADDRESS_DATA_URL, zip_path)
 
     with zip_path.open("rb") as f:
         header = f.read(4)

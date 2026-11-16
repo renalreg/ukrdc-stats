@@ -6,6 +6,7 @@ from ukrdc_stats.calculators.builders import build_labelled2d, under_maintenance
 from ukrdc_stats.calculators.ckd import PrevalentCKDCalculator
 from ukrdc_stats.calculators.krt import KRTStatsCalculator
 from ukrdc_stats.calculators.models import KRTStats
+from ukrdc_stats.utils.data import aggregate_data
 
 
 def _krt_cohort() -> pd.DataFrame:
@@ -40,8 +41,6 @@ def _krt_cohort() -> pd.DataFrame:
 
 
 def _aggregated(cohort: pd.DataFrame, column_attributes: list[str]) -> pd.DataFrame:
-    from ukrdc_stats.utils.data import aggregate_data
-
     return aggregate_data(
         cohort_wide=cohort,
         column_attributes=column_attributes,
