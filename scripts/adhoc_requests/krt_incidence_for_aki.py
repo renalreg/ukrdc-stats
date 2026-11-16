@@ -1,15 +1,29 @@
-"""
-PBM 13-11-26 Script to generate a ukrdc incidence list for a given year to
-remove from the akc alerts.
+"""Generate a UKRDC incident KRT list for a given year, for removal from
+the AKC alerts. PBM 13-11-26.
 
-Centres which exist on ukrdc_live are extracted from there; any centre not
-on live falls back to ukrdc_staging. Output contains NHS numbers so it is
-written to the git-ignored .do_not_commit folder.
+Run from the repo root:
+
+    python scripts/adhoc_requests/krt_incidence_for_aki.py
+
+Requires UKRDC_STATS_KEYPATH in the environment or a .env file. Set the
+year with the YEAR constant.
+
+Centres are read from ukrdc_live with main_centres, which includes feed
+share main units. Centres on ukrdc_live are extracted there; the rest
+fall back to ukrdc_staging. Output contains NHS numbers so it is written
+to the git-ignored .do_not_commit folder.
+
+Resuming: if the output file already exists, centres with rows in it are
+skipped and the run continues from there, so an interrupted run can just
+be re-run. A partial last row left by a crash is dropped first. Centres
+which extracted zero patients leave no rows and are re-queried on a
+resumed run. Delete the output file to force a full re-run.
 """
 
 import datetime as dt
 from pathlib import Path
 
+import pandas as pd
 from dotenv import dotenv_values
 
 from ukrdc_stats.cohorts.base import krt_incident
@@ -43,8 +57,22 @@ extracted_centres: list[str] = []
 total = 0
 
 OUTFILE.parent.mkdir(parents=True, exist_ok=True)
-# start a fresh file with the header row; centres are appended as extracted
-OUTFILE.write_text("modality,startdate,nhsno,main_centre\n")
+if OUTFILE.exists() and OUTFILE.stat().st_size > 0:
+    # a crashed write can leave a partial last row; drop it before resuming
+    text = OUTFILE.read_text()
+    if not text.endswith("\n"):
+        OUTFILE.write_text(text.rsplit("\n", 1)[0] + "\n")
+
+    # resume: centres already present in the output file are skipped
+    written = pd.read_csv(OUTFILE)
+    extracted_centres = sorted(written["main_centre"].dropna().unique().tolist())
+    total = len(written)
+    print(
+        f"Resuming: {len(extracted_centres)} centres, {total} patients already written"
+    )
+else:
+    # start a fresh file with the header row; centres are appended as extracted
+    OUTFILE.write_text("modality,startdate,nhsno,main_centre\n")
 
 
 for server in ["ukrdc_live", "ukrdc_staging"]:
