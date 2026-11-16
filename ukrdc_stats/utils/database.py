@@ -1,4 +1,6 @@
-"""Database session creation from UKRDC config files."""
+"""Database session creation from UKRDC config files. In general something 
+needs to be written to make the sqlalchemy errors a bit more user friendly.
+"""
 
 import json
 from pathlib import Path
@@ -80,6 +82,7 @@ def get_sessionmaker(
 
     if caching:
         return cachedsessionmaker(bind=engine)
+
     return sessionmaker(bind=engine)
 
 
