@@ -116,7 +116,9 @@ $$ LANGUAGE plpgsql;
 
 
 -- Point-prevalence cohort for a single date.
--- Returns every treatment row active on the supplied prevalence_point.
+-- Returns one row per patient with the treatment active on the supplied
+-- prevalence_point, preferring the most recently starting (then longest)
+-- record where treatments overlap.
 
 CREATE OR REPLACE FUNCTION pg_temp.prevalent_cohort(
     centres text [],
@@ -143,24 +145,6 @@ BEGIN
         WHERE p.sendingextract = 'UKRDC'
           AND p.sendingfacility = ANY(centres)
     ),
-    valid_treatments AS (
-        SELECT t.pid,
-               t.healthcarefacilitycode,
-               t.fromtime,
-               t.totime,
-               t.admitreasoncode,
-               mc.registry_code_type
-        FROM treatment t
-        INNER JOIN modality_codes mc ON mc.registry_code = t.admitreasoncode
-        WHERE mc.registry_code_type IN ('TX', 'HD', 'PD')
-    ),
-    first_valid_treatment AS (
-        SELECT DISTINCT ON (pid)
-            pid,
-            fromtime AS first_fromtime
-        FROM valid_treatments
-        ORDER BY pid, fromtime ASC
-    ),
     active_treatments AS (
         SELECT DISTINCT ON (ep.pid)
             ep.pid,
@@ -168,26 +152,18 @@ BEGIN
             ep.sendingfacility,
             ep.birthtime,
             ep.deathtime,
-            vt.healthcarefacilitycode,
-            vt.admitreasoncode,
-            vt.registry_code_type,
-            vt.fromtime,
-            vt.totime,
-            fvt.first_fromtime
+            t.healthcarefacilitycode,
+            t.admitreasoncode,
+            mc.registry_code_type,
+            t.fromtime,
+            t.totime
         FROM eligible_patients ep
-        INNER JOIN valid_treatments vt ON vt.pid = ep.pid
-        INNER JOIN first_valid_treatment fvt ON fvt.pid = ep.pid
-        WHERE vt.fromtime <= prevalence_point
-          AND (vt.totime >= prevalence_point OR vt.totime IS NULL)
-        ORDER BY ep.pid, vt.fromtime ASC, vt.totime DESC NULLS FIRST
-    ),
-    incident_patients AS (
-        SELECT DISTINCT i.pid
-        FROM pg_temp.incident_cohort(
-            centres,
-            (prevalence_point - interval '90 days')::date,
-            prevalence_point
-        ) i
+        INNER JOIN treatment t ON t.pid = ep.pid
+        INNER JOIN modality_codes mc ON t.admitreasoncode = mc.registry_code
+        WHERE mc.registry_code_type IN ('TX', 'HD', 'PD')
+          AND t.fromtime <= prevalence_point
+          AND (t.totime >= prevalence_point OR t.totime IS NULL)
+        ORDER BY ep.pid, t.fromtime DESC, t.totime DESC NULLS FIRST
     )
     SELECT at.ukrdcid,
            at.pid,
@@ -199,9 +175,7 @@ BEGIN
            at.registry_code_type,
            at.fromtime,
            at.totime
-    FROM active_treatments at
-    WHERE at.first_fromtime < prevalence_point - interval '90 days'
-       OR at.pid IN (SELECT ip.pid FROM incident_patients ip);
+    FROM active_treatments at;
 END;
 $$ LANGUAGE plpgsql;
 COMMIT;
