@@ -26,9 +26,9 @@ portalocker = "^4.4.0"
 
 [tool.poetry.group.test.dependencies]
 # All tests will require the dev dependencies as well
-pytest = "^7.1.2"
+pytest = "^9.2.0"
 pytest-cov = "^4.0.0"
-ruff = "^0.9.2"
+ruff = "^0.16.0"
 nbstripout = "^0.8.1"
 tox = "^4.24.2"
 # static analysis and safety tooling
@@ -36,7 +36,7 @@ pyright = "^1.1.390"
 pandas-stubs = "^2.2"
 vulture = "^2.14"
 import-linter = "^2.0"
-sqlfluff = "^3.0"
+sqlfluff = "^4.5.0"
 darglint = "^1.8"
 interrogate = "^1.7"
 pre-commit = "^4.0"
