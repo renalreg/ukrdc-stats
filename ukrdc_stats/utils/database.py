@@ -1,4 +1,4 @@
-"""Database session creation from UKRDC config files. In general something 
+"""Database session creation from UKRDC config files. In general something
 needs to be written to make the sqlalchemy errors a bit more user friendly.
 """
 

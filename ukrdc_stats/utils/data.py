@@ -312,9 +312,9 @@ def main_centres(session: Session, when: dt.datetime | None = None) -> list[str]
     A main centre is a facility which appears as a main unit in the
     satellite map view, started sending data before the quarter containing
     `when`, and had not stopped sending by `when`.
-     
+
     This needs reviewing in light of the rr1(as opposed to rr1+) list which
-    seems to be an up-to-date list of main centres. 
+    seems to be an up-to-date list of main centres.
 
     Args:
         session (Session): UKRDC database session
@@ -328,7 +328,7 @@ def main_centres(session: Session, when: dt.datetime | None = None) -> list[str]
     when_quarter = date_to_quarter(when)
 
     # This needs reviewing in light of the rr1(as opposed to rr1+) list which
-    # seems to be an up-to-date list of main centres.  
+    # seems to be an up-to-date list of main centres.
     main_units = select(SatelliteMap.main_unit_code).ext(
         distinct_on(SatelliteMap.main_unit_code)
     )
