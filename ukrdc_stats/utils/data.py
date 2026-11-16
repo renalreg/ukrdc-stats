@@ -4,7 +4,7 @@ import datetime as dt
 import warnings
 
 import pandas as pd
-from sqlalchemy import and_, or_, select
+from sqlalchemy import and_, select
 from sqlalchemy.dialects.postgresql import distinct_on
 from sqlalchemy.orm import Session
 from ukrdc_sqla.ukrdc import Code, CodeMap, Facility, SatelliteMap
@@ -325,7 +325,7 @@ def main_centres(session: Session, when: dt.datetime | None = None) -> list[str]
         list[str]: Sorted list of main centre codes
     """
     when = when or dt.datetime.now()
-    when_quarter = date_to_quarter(when)
+    when_quarter = date_to_quarter(when)  # noqa: F841
 
     # This needs reviewing in light of the rr1(as opposed to rr1+) list which
     # seems to be an up-to-date list of main centres.
@@ -333,9 +333,10 @@ def main_centres(session: Session, when: dt.datetime | None = None) -> list[str]
         distinct_on(SatelliteMap.main_unit_code)
     )
 
+    # re-enable once metadata has been corrected
     query = select(Facility.facilitycode).where(
-        Facility.firstdataquarter < when_quarter,
-        or_(Facility.enddate.is_(None), Facility.enddate > when),
+        # Facility.firstdataquarter < when_quarter,
+        # or_(Facility.enddate.is_(None), Facility.enddate > when),  # noqa: ERA001
         Facility.facilitycode.in_(main_units),
     )
 

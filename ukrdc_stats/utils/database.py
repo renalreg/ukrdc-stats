@@ -1,5 +1,11 @@
-"""Database session creation from UKRDC config files. In general something
-needs to be written to make the sqlalchemy errors a bit more user friendly.
+"""Database session creation from UKRDC config files.
+
+Util to help with connecting to the database. General pattern here assumes an
+open ssh tunnel and password read from a json file.
+
+There is a fair amount left to do here:
+1) fix db caching
+2) handle sqlalchemy errors in a user friendly way
 """
 
 import json

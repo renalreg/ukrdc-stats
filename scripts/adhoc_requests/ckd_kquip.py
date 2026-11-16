@@ -3,16 +3,17 @@ PBM -13-11-26 Simple report to extract the careplanning data held in the ukrdc
 for the midlands region
 """
 
-from pathlib import Path
-from dotenv import dotenv_values
 import datetime as dt
+from pathlib import Path
 
-from ukrdc_stats.utils.database import get_sessionmaker
+from dotenv import dotenv_values
+
 from ukrdc_stats.cohorts.base import ckd_prevalent
-from ukrdc_stats.labellers.clinical import link_first_seen, prevalent_careplanning
-from ukrdc_stats.labellers.base import nhs_number
 from ukrdc_stats.exceptions import EmptyCohortError
+from ukrdc_stats.labellers.base import nhs_number
+from ukrdc_stats.labellers.clinical import link_first_seen, prevalent_careplanning
 from ukrdc_stats.utils.data import lookup_codes
+from ukrdc_stats.utils.database import get_sessionmaker
 
 CENTRES = [
     "RRK02",  # Bham

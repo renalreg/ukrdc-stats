@@ -3,16 +3,16 @@ PBM 13-11-26 - Report on the completeness of the first seen date of CKD
 prevalent patients.
 """
 
-from pathlib import Path
-from dotenv import dotenv_values
 import datetime as dt
+from pathlib import Path
+
 import pandas as pd
+from dotenv import dotenv_values
 
-from ukrdc_stats.utils.database import get_sessionmaker
 from ukrdc_stats.cohorts.base import ckd_prevalent
-from ukrdc_stats.labellers.clinical import link_first_seen
 from ukrdc_stats.exceptions import EmptyCohortError
-
+from ukrdc_stats.labellers.clinical import link_first_seen
+from ukrdc_stats.utils.database import get_sessionmaker
 
 SERVER = "ukrdc_live"
 CENTRES = [
