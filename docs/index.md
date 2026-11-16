@@ -1,6 +1,6 @@
 # ukrdc-stats
 
-`ukrdc-stats` produces statistics from the UKRDC database for dashboards and ad-hoc statistical work. 
+`ukrdc-stats` produces statistics from the UKRDC database for dashboards and ad-hoc statistical work.
 
 ## How it fits together
 

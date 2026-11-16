@@ -64,6 +64,7 @@ def _progress(start: dt.datetime, end: dt.datetime, centre: str, n: int) -> None
 
 # Step 1: load the sql cohort
 
+
 def _function_definitions() -> str:
     """Read the sql file, dropping BEGIN/COMMIT.
 
@@ -161,12 +162,14 @@ def compare(py: pd.DataFrame, sql: pd.DataFrame) -> pd.DataFrame:
     compared = py.merge(
         sql, on=KEYS, how="outer", suffixes=("_py", "_sql"), indicator="found_in"
     )
-    compared["found_in"] = compared["found_in"].astype(str).replace(
-        {"left_only": "python", "right_only": "sql"}
+    compared["found_in"] = (
+        compared["found_in"]
+        .astype(str)
+        .replace({"left_only": "python", "right_only": "sql"})
     )
 
-    py_patients = set(zip(py["period_start"], py["ukrdcid"]))
-    sql_patients = set(zip(sql["period_start"], sql["ukrdcid"]))
+    py_patients = set(zip(py["period_start"], py["ukrdcid"], strict=False))
+    sql_patients = set(zip(sql["period_start"], sql["ukrdcid"], strict=False))
 
     def status(row: pd.Series) -> str:
         if row["found_in"] == "both":
