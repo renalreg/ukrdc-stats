@@ -16,8 +16,9 @@ to the git-ignored .do_not_commit folder.
 Resuming: if the output file already exists, centres with rows in it are
 skipped and the run continues from there, so an interrupted run can just
 be re-run. A partial last row left by a crash is dropped first. Centres
-which extracted zero patients leave no rows and are re-queried on a
-resumed run. Delete the output file to force a full re-run.
+with no incident patients are recorded with empty patient fields, so a
+resumed run skips them too. Delete the output file to force a full
+re-run.
 """
 
 import datetime as dt
@@ -66,7 +67,9 @@ if OUTFILE.exists() and OUTFILE.stat().st_size > 0:
     # resume: centres already present in the output file are skipped
     written = pd.read_csv(OUTFILE)
     extracted_centres = sorted(written["main_centre"].dropna().unique().tolist())
-    total = len(written)
+
+    # rows without a startdate are the no-patient centre markers
+    total = written["startdate"].notna().sum()
     print(
         f"Resuming: {len(extracted_centres)} centres, {total} patients already written"
     )
@@ -88,11 +91,18 @@ for server in ["ukrdc_live", "ukrdc_staging"]:
                 print(f"skipping {centre} on {server}")
                 continue
 
-            # centre exists on this server so it is handled either way
-            extracted_centres.append(centre)
             if cohort.empty:
+                # record the centre with empty patient fields so resumed
+                # runs skip it and the output lists it
+                pd.DataFrame(
+                    [[None, None, None, centre]],
+                    columns=["modality", "startdate", "nhsno", "main_centre"],
+                ).to_csv(OUTFILE, mode="a", header=False, index=False)
                 print(f"{centre} ({server}): 0 incident patients")
                 continue
+            else:
+                # centre exists on this server so it is handled either way
+                extracted_centres.append(centre)
 
             # attach nhs number then shape the output columns
             cohort = nhs_number(cohort, session)
