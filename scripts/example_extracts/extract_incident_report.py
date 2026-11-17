@@ -177,7 +177,7 @@ def main():
 
 def refresh_pivot_tables(output_dir: Path, centres: list[str]) -> None:
     """Open each output file in Excel, refresh all pivot tables, and save."""
-    import win32com.client
+    import win32com.client  # deptry: ignore (poetry can't find this)
 
     excel = win32com.client.Dispatch("Excel.Application")
     excel.Visible = False

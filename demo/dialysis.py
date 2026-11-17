@@ -1,4 +1,4 @@
-import marimo
+import marimo  # deptry: ignore - remove once PR to fix (linked in pyproject) is merged
 
 __generated_with = "0.24.0"
 app = marimo.App(width="medium")
@@ -14,7 +14,7 @@ def _(mo):
 
 @app.cell
 def _():
-    import marimo as mo
+    import marimo as mo  # deptry: ignore - remove once PR to fix (linked in pyproject) is merged
 
     return (mo,)
 

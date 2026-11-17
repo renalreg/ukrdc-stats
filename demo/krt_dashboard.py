@@ -6,7 +6,7 @@ stacked bar chart (built from the pivot) with the pivot table beneath.
 Run with: marimo run demo/krt_dashboard.py
 """
 
-import marimo
+import marimo  # deptry: ignore - remove once PR to fix (linked in pyproject) is merged
 import pandas as pd
 
 __generated_with = "0.24.0"
@@ -17,9 +17,9 @@ app = marimo.App(width="medium")
 def _():
     from pathlib import Path
 
-    import marimo as mo
+    import marimo as mo  # deptry: ignore - remove once PR to fix (linked in pyproject) is merged
     import pandas as pd
-    import plotly.express as px
+    import plotly.express as px  # deptry: ignore - remove once PR to fix (linked in pyproject) is merged
 
     DATA_PATH: Path = (
         mo.notebook_dir().parent / ".do_not_commit" / "krt_demog_ukrdc_live_2024.csv"
