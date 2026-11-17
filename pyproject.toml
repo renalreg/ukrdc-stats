@@ -14,9 +14,9 @@ version = "3.0.0"
 [tool.poetry.dependencies]
 SQLAlchemy = "^2.1.0"
 pandas = "^2.2.2"
+numpy = "^2.5.5"
 python = "^3.12"
 ukrdc-sqla = "^5.2.0"
-psycopg = {extras = ["binary"], version = "^3.2.3"}
 pandera = "^0.30.1"
 dogpile-cache = "^1.5.0"
 pydantic = "^2.0"
@@ -61,6 +61,7 @@ plotly = "^5.10.0"
 rr-connection-manager = "^0.4.1"
 jupyter = "^1.1.1"
 marimo = "^0.24.0"
+ipython = "^9.18.1"
 
 [tool.poetry.group.docs.dependencies]
 mkdocs = "^1.6"
@@ -197,3 +198,6 @@ layers = [
 [tool.sqlfluff.core]
 dialect = "postgres"
 templater = "raw"
+
+[tool.deptry]
+non_dev_dependency_groups = ["demo"]  # currently doesn't work: https://github.com/osprey-oss/deptry/pull/1631

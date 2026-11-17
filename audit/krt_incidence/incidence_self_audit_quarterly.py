@@ -10,7 +10,7 @@ Run from the repo root:
 
 import datetime as dt
 
-from incidence_self_audit_steps import (
+from incidence_self_audit_steps import (  # deptry: ignore
     Period,
     compare,
     load_python_cohort,
