@@ -22,7 +22,7 @@ dogpile-cache = "^1.5.0"
 pydantic = "^2.0"
 python-dotenv = "^1.2.3"
 portalocker = "^4.4.0"
-pywin32 = "^312"
+pywin32 =  { version = "^312", markers = "sys_platform == 'win32'" }
 
 
 [tool.poetry.group.test.dependencies]
