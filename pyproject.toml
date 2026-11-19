@@ -205,5 +205,8 @@ templater = "raw"
 [tool.deptry]
 non_dev_dependency_groups = ["demo"]  # currently doesn't work: https://github.com/osprey-oss/deptry/pull/1631
 
+[tool.deptry.package_module_name_map]
+pywin32 = "win32com"
+
 [tool.mypy]
 plugins = ["pydantic.mypy", "pandera.mypy"]
