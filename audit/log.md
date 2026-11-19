@@ -17,3 +17,31 @@ TODO: create a unique id to attach to report runs and output all the input param
 ### Findings
 
 ### Actions
+
+## 19-11-26
+
+**Audit**: `krt_prevalent` vs annual report 2024
+
+- **Scripts**: `scripts/extract_krt_demog.py`
+- **Audit data**: `R:/Annual Reports/ESKD annual reports/CURRENT report/ANNUAL REPORT CONTENT Stats and Indesign/Prevalence/Excel files/Prev_demog_CURRENT.xls"`
+- **Periods**: 2024 Q4
+- **Centres**: All live
+- **Server**: ukrdc_live
+
+### Findings
+- A few patients with `centre_code` that doesn't correspond to the `sendingfacility`, particularly for BHLY, possibly due to centres submitting data for other treatment locations. Preferable to filter these out at the calculator stage, perhaps by only allowing particular combinations of `sendingfacility` and `centre_code`.
+- The following are percentages of UKRDC/UKRR counts:
+#### HD
+Derby 200%, Exeter 150%, Reading 125%, Shrewsbury 134%. Derby could be known AKI issue.
+#### PD
+Stevng 126%, Nottm 132%, Derby 128%, Exeter 156%, Redng 140%, Barts 277%, Doncaster 35%. Could be a similar issue with Barts PD as in version 2.
+#### Tx
+Bradford 4%, York 6%, Hull 6%, Exeter 186%, Reading 122%, Shrew 155%,Leeds 187%. Possible that BHY transplants are all allocated to Leeds.
+#### HHD
+Numbers are good considering small. Derby and Reading ~25% over, Shrew and Donc ~40% under.
+
+
+### Actions
+SS to:
+- compare against checks done for previous releases
+- investigate individual level data for problematic centres.
