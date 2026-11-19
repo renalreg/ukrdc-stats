@@ -100,10 +100,10 @@ with get_sessionmaker(SERVER, keypath=KEYPATH)() as session:
             continue
 
     base_cohort = main_satellite_centres(session, base_cohort)
-    aggregate_data = aggregate_data(
+    aggregated_data = aggregate_data(
         base_cohort, ["centre_code"], ["sex", "age", "ukkaethnicity"]
     )
-    comparison_data = aggregate_data.merge(
+    comparison_data = aggregated_data.merge(
         ref_data,
         on=["centre_code", "variable", "attribute"],
         how="left",

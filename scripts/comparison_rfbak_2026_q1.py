@@ -10,7 +10,7 @@ from ukrdc_stats.utils.database import get_sessionmaker
 server = "ukrdc_staging"
 
 config = dotenv_values(".env")
-keypath = config.get("UKRDC_STATS_KEYPATH")
+keypath: str = config.get("UKRDC_STATS_KEYPATH")  # type: ignore
 
 data_dir = Path(".do_not_commit")
 patient_data_file = data_dir / "incident_q2_2026_rfbak.csv"

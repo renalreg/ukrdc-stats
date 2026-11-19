@@ -27,7 +27,7 @@ with get_sessionmaker(SERVER, keypath=KEYPATH)() as session:
     base_cohort = ckd_prevalent(session, CENTRE, prevalence_date)
     base_cohort = imd(session, base_cohort)
     base_cohort = prevalent_careplanning(
-        session, base_cohort, prevalence_date, "TPLTassess"
+        session, base_cohort, prevalence_date, ["TPLTassess"]
     )
     base_cohort = main_satellite_centres(session, base_cohort)
 

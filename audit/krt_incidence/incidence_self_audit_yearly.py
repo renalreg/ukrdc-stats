@@ -11,7 +11,7 @@ Run from the repo root:
 
 import datetime as dt
 
-from self_audit_steps import (  # deptry: ignore
+from incidence_self_audit_steps import (  # deptry: ignore
     Period,
     compare,
     load_python_cohort,

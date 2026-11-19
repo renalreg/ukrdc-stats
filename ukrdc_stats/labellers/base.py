@@ -2,6 +2,7 @@
 
 import pandas as pd
 from sqlalchemy import select
+from sqlalchemy.engine import Row
 from sqlalchemy.orm import Session
 from ukrdc_sqla.ukrdc import PatientNumber
 
@@ -35,7 +36,7 @@ def nhs_number(
 
     # Query PatientNumber in chunks of 100 to avoid large IN clauses
     chunk_size = 100
-    rows = []
+    rows: list[Row] = []
     for i in range(0, len(pids), chunk_size):
         chunk = pids[i : i + chunk_size]
         query = select(
@@ -89,7 +90,7 @@ def nhs_uid(patient_cohort: pd.DataFrame, session: Session) -> pd.DataFrame:
 
     # Query PatientNumber in chunks of 100 to avoid large IN clauses
     chunk_size = 100
-    rows = []
+    rows: list[Row] = []
     for i in range(0, len(pids), chunk_size):
         chunk = pids[i : i + chunk_size]
         query = select(
