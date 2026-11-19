@@ -86,7 +86,7 @@ def egfr(
     null_egfr_mask = egfr_data["egfr"].isna()
 
     if null_egfr_mask.any():
-        egfr_data.loc[null_egfr_mask, "egfr"] = egfr_data[null_egfr_mask].apply(
+        egfr_data.loc[null_egfr_mask, "egfr"] = egfr_data[null_egfr_mask].apply(  # type: ignore[call-overload]
             lambda row: calculate_egfr(
                 scr=row["resultvalue"],
                 scr_unit=row["resultvalueunits"],

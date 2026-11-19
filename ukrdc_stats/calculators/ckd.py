@@ -69,7 +69,7 @@ class PrevalentCKDCalculator:
             )
 
         cohort = prevalent_careplanning(
-            self.session, cohort, self.prevalence_point, "TPLTassess"
+            self.session, cohort, self.prevalence_point, ["TPLTassess"]
         )
 
         cohort["ethnicity"] = cohort["ukkaethnicity"].fillna("Missing")
@@ -86,14 +86,14 @@ class PrevalentCKDCalculator:
             if self._patient_cohort is None:
                 self.extract_patient_cohort()
             self._aggregated = aggregate_data(
-                cohort_wide=self._patient_cohort,
+                cohort_wide=self._patient_cohort,  # type: ignore[arg-type]
                 column_attributes=COLUMN_ATTRIBUTES,
                 row_attributes=ROW_ATTRIBUTES,
             )
         return self._aggregated
 
     def _population(self, unit: str = "all") -> int:
-        cohort = self._patient_cohort
+        cohort: pd.DataFrame = self._patient_cohort  # type: ignore[assignment]
         if unit != "all":
             cohort = cohort[cohort["satellite_code"] == unit]
         return cohort["ukrdcid"].nunique()

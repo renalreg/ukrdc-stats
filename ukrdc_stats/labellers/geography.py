@@ -72,7 +72,7 @@ def main_satellite_centres(
         if column not in patient_cohort.columns:
             raise MissingColumnError(f"patient_cohort is missing column '{column}'")
 
-    facility_relationships = pd.read_sql(select(FacilityRelationship), session.bind)
+    facility_relationships = pd.read_sql(select(FacilityRelationship), session.bind)  # type: ignore[arg-type]
 
     feedshare_main_unit_map = facility_relationships[
         facility_relationships["relationshiptype"] == "FEED-SHARE"

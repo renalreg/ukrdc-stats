@@ -22,6 +22,7 @@ dogpile-cache = "^1.5.0"
 pydantic = "^2.0"
 python-dotenv = "^1.2.3"
 portalocker = "^4.4.0"
+pywin32 = "^312"
 
 
 [tool.poetry.group.test.dependencies]
@@ -40,11 +41,13 @@ sqlfluff = "^4.5.0"
 darglint = "^1.8"
 interrogate = "^1.7"
 pre-commit = "^4.0"
+deptry = "^0.25.1"
+mypy = "^2.4.1"
+types-pywin32 = "^312.0.0.20261104"
+plotly-stubs = "^0.1.4"
 # property-based testing
 hypothesis = "^6.100"
 openpyxl = "^3.1.5"
-deptry = "^0.25.1"
-mypy = "^2.4.1"
 
 
 [tool.poetry.group.demo]
@@ -201,3 +204,6 @@ templater = "raw"
 
 [tool.deptry]
 non_dev_dependency_groups = ["demo"]  # currently doesn't work: https://github.com/osprey-oss/deptry/pull/1631
+
+[tool.mypy]
+plugins = ["pydantic.mypy", "pandera.mypy"]

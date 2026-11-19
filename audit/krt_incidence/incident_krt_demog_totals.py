@@ -149,9 +149,9 @@ with get_sessionmaker(SERVER, keypath=KEYPATH)() as session:
     # base_cohort = main_satellite_centres(session, base_cohort)
     # base_cohort = base_cohort.rename(columns = {"registry_code_type":"dialtplt"})
 
-    aggregate_data = aggregate_data(base_cohort, ["centre_code"], ["dialtplt"])
+    aggregated_data = aggregate_data(base_cohort, ["centre_code"], ["dialtplt"])
 
-    comparison_data = aggregate_data.merge(
+    comparison_data = aggregated_data.merge(
         ref_data,
         on=["centre_code", "variable", "attribute"],
         how="left",

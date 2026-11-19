@@ -45,7 +45,7 @@ def run_comparison(server: str, ref_csv: Path) -> pd.DataFrame:
     )
 
     results = []
-    session_maker = get_sessionmaker(server, keypath=KEYPATH)
+    session_maker = get_sessionmaker(server, keypath=KEYPATH)  # type: ignore[arg-type]
 
     with session_maker() as session:
         # Unique prevalence_points — all facilities per point
