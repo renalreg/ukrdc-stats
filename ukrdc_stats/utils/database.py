@@ -1,4 +1,12 @@
-"""Database session creation from UKRDC config files."""
+"""Database session creation from UKRDC config files.
+
+Util to help with connecting to the database. General pattern here assumes an
+open ssh tunnel and password read from a json file.
+
+There is a fair amount left to do here:
+1) fix db caching
+2) handle sqlalchemy errors in a user friendly way
+"""
 
 import json
 from pathlib import Path
@@ -80,6 +88,7 @@ def get_sessionmaker(
 
     if caching:
         return cachedsessionmaker(bind=engine)
+
     return sessionmaker(bind=engine)
 
 

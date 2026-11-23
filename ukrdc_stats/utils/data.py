@@ -5,8 +5,9 @@ import warnings
 
 import pandas as pd
 from sqlalchemy import and_, select
+from sqlalchemy.dialects.postgresql import distinct_on
 from sqlalchemy.orm import Session
-from ukrdc_sqla.ukrdc import Code, CodeMap
+from ukrdc_sqla.ukrdc import Code, CodeMap, Facility, SatelliteMap
 
 from ukrdc_stats.exceptions import MissingColumnError
 
@@ -122,6 +123,49 @@ def dob_cutoff_from_age(date: dt.datetime, age: int) -> dt.datetime:
         dt.date: date a set number of years ago
     """
     return date - dt.timedelta(days=age * 365.25)
+
+
+def quarter_to_dates(quarter: int) -> tuple[dt.datetime, dt.datetime]:
+    """Return the start and end dates of a ukrdc data quarter.
+
+    Quarters are counted from Q1 1995, the first ukrr data quarter, so
+    quarter 1 is Jan-Mar 1995. The end date is the first day of the
+    following quarter, giving a [start, end) window.
+
+    Args:
+        quarter (int): Quarter number counted from Q1 1995
+
+    Returns:
+        tuple[dt.datetime, dt.datetime]: Quarter start and end (exclusive)
+    """
+    year = 1995 + (quarter - 1) // 4
+    quarter_of_year = (quarter - 1) % 4 + 1
+
+    start = dt.datetime(year, 3 * quarter_of_year - 2, 1)
+    # the quarter after Q4 starts in January of the next year
+    end = dt.datetime(year + quarter_of_year // 4, 3 * quarter_of_year % 12 + 1, 1)
+
+    return start, end
+
+
+def date_to_quarter(date: dt.datetime) -> int:
+    """Return the ukrdc quarter number containing a date.
+
+    Quarters are counted from Q1 1995, the first ukrr data quarter.
+
+    Args:
+        date (dt.datetime): Date to map to a quarter
+
+    Returns:
+        int: Quarter number counted from Q1 1995
+
+    Raises:
+        ValueError: If the date is before Q1 1995
+    """
+    if date < dt.datetime(1995, 1, 1):
+        raise ValueError(f"{date:%Y-%m-%d} predates the first ukrdc quarter (Q1 1995)")
+
+    return (date.year - 1995) * 4 + (date.month - 1) // 3 + 1
 
 
 def map_codes(
@@ -260,6 +304,44 @@ def aggregate_data(
     )
 
     return cohort_long.rename(columns={"ukrdcid": "count"})
+
+
+def main_centres(session: Session, when: dt.datetime | None = None) -> list[str]:
+    """Select set of main centres with ukrdc rda feed.
+
+    A main centre is a facility which appears as a main unit in the
+    satellite map view, started sending data before the quarter containing
+    `when`, and had not stopped sending by `when`.
+
+    This needs reviewing in light of the rr1(as opposed to rr1+) list which
+    seems to be an up-to-date list of main centres.
+
+    Args:
+        session (Session): UKRDC database session
+        when (dt.datetime | None): Point in time to test the feed against,
+            defaults to now
+
+    Returns:
+        list[str]: Sorted list of main centre codes
+    """
+    when = when or dt.datetime.now()
+    when_quarter = date_to_quarter(when)  # noqa: F841
+
+    # This needs reviewing in light of the rr1(as opposed to rr1+) list which
+    # seems to be an up-to-date list of main centres.
+    main_units = select(SatelliteMap.main_unit_code).ext(
+        distinct_on(SatelliteMap.main_unit_code)
+    )
+
+    # re-enable once metadata has been corrected
+    query = select(Facility.facilitycode).where(
+        # Facility.firstdataquarter < when_quarter,
+        # or_(Facility.enddate.is_(None), Facility.enddate > when),  # noqa: ERA001
+        Facility.facilitycode.in_(main_units),
+    )
+
+    centres = session.execute(query).all()
+    return sorted(row[0] for row in centres)
 
 
 # NHS digital gender map
