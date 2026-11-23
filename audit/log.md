@@ -18,6 +18,25 @@ TODO: create a unique id to attach to report runs and output all the input param
 
 ### Actions
 
+## 23-11-26
+
+**Audit**: CKD checks (previous data vs current)
+
+- **Scripts**: `scripts/extract_ckd_demog.py`
+- **Audit data**: `K:\Internal work\Portal\UKRDC\CKD/Checks 2026 11 23.xls"`
+- **Periods**: 2024 Q3 - 2026 Q2
+- **Centres**: All live
+- **Server**: ukrdc_live
+
+### Findings
+- We are systematically over counting CKD across all live units in the latest run. There are significant differences. 
+
+### Actions
+WM to:
+- Run unaggregated CKD file and look at GFR values in the latest output. Are these consistent with >15 as we would expect?
+PM to:
+- Check possible reasons for discrepancies in the calculators. 
+  
 ## 19-11-26
 
 **Audit**: `krt_prevalent` vs annual report 2024
@@ -45,3 +64,4 @@ Numbers are good considering small. Derby and Reading ~25% over, Shrew and Donc 
 SS to:
 - compare against checks done for previous releases
 - investigate individual level data for problematic centres.
+
