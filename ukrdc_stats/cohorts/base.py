@@ -486,12 +486,15 @@ def krt_prevalent(
 
     # TODO: more logic around recovery window and treatment relationship
     # to the prevalence point
+    #
+    # Sort by fromtime first makes code more robust against treatment records
+    # that haven't been closed.
     singular_cohort = (
         base_cohort[
             (base_cohort.fromtime <= prevalence_point)
             & ((base_cohort.totime > prevalence_point) | base_cohort.totime.isna())
         ]
-        .sort_values(["fromtime","totime"], ascending=False)
+        .sort_values(["fromtime", "totime"], ascending=False)
         .drop_duplicates("ukrdcid", keep="first")
     )
 

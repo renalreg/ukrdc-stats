@@ -1,3 +1,10 @@
+"""Script to compare patients on row level against data extracted from the ukrr
+dataset for prevalence at a specified quarter. Assumes ukrr data in the format:
+
+"rrno", "nhsno", "trt", "centre"
+
+"""
+
 import datetime as dt
 from pathlib import Path
 
@@ -14,12 +21,12 @@ LIVE_FACILITIES = [
     "RAQ01",  # Lister (Stevenage)
     "RH8",  # RD&E
     "RHW01",  # Reading
-    "RCSLB"
+    "RCSLB",
 ]
 
 SERVER = "ukrdc_live"
 PREVAlENCE_QUARTER = 120
-PREVALENCE_POINT = dt.datetime(2024, 12, 31) # todo:calculate from quarter
+PREVALENCE_POINT = dt.datetime(2024, 12, 31)  # TODO:calculate from quarter
 OUTPUT_PATH = Path(".do_not_commit/prevalence_compare_row_level.csv")
 MISMATCH_OUTPUT_PATH = Path(".do_not_commit/prevalence_mismatches.csv")
 MISMATCH_COLUMNS = [
@@ -32,7 +39,7 @@ MISMATCH_COLUMNS = [
     "nhs_no",
     "centre",
     "trt",
-    "match_category"
+    "match_category",
 ]
 MATCH_CATEGORIES = [
     "not_ukrr",
@@ -86,9 +93,7 @@ def build_patient_comparison(
     ukrdc: pd.DataFrame, rr_reference: pd.DataFrame
 ) -> pd.DataFrame:
     """One row per UKRDC patient with boolean flags for UKRR matches."""
-    comparison = ukrdc.merge(
-        rr_reference, on="nhs_no", how="left", indicator=True
-    )
+    comparison = ukrdc.merge(rr_reference, on="nhs_no", how="left", indicator=True)
     comparison["ukkr_patient"] = comparison["_merge"] == "both"
     comparison["centre_match"] = comparison["ukkr_patient"] & (
         comparison["centre_code"] == comparison["centre"]
@@ -108,16 +113,17 @@ def main() -> None:
     rr_reference = load_rr_reference(RR_REFERENCE_PATH)
 
     with get_sessionmaker(SERVER, keypath=KEYPATH, caching=False)() as session:
-        ukrdc = build_ukrdc_prevalent(session, LIVE_FACILITIES, PREVALENCE_POINT)[[
-            "pid",
-            "ukrdcid", 
-            "sendingfacility",
-            "centre_code",
-            "satellite_code", 
-            "dialtplt"
-        ]]
+        ukrdc = build_ukrdc_prevalent(session, LIVE_FACILITIES, PREVALENCE_POINT)[
+            [
+                "pid",
+                "ukrdcid",
+                "sendingfacility",
+                "centre_code",
+                "satellite_code",
+                "dialtplt",
+            ]
+        ]
         ukrdc = nhs_number(ukrdc, session).rename(columns={"nhs_number": "nhs_no"})
-
 
     comparison = build_patient_comparison(ukrdc, rr_reference)
 
@@ -126,7 +132,7 @@ def main() -> None:
     ]
     mismatches.to_csv(MISMATCH_OUTPUT_PATH, index=False)
 
-    #comparison.to_csv(OUTPUT_PATH, index=False)
+    # comparison.to_csv(OUTPUT_PATH, index=False)
     print(f"UKRDC patients: {len(ukrdc)}")
     print(comparison[["ukkr_patient", "centre_match", "modality_match"]].sum())
 
