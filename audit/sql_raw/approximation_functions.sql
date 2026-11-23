@@ -128,13 +128,13 @@ RETURNS TABLE (
     ukrdcid varchar,
     pid varchar,
     sendingfacility varchar,
-    birthtime date,
-    deathtime date,
+    birthtime timestamp,
+    deathtime timestamp,
     healthcarefacilitycode varchar,
     admitreasoncode varchar,
     registry_code_type varchar,
-    fromtime date,
-    totime date
+    fromtime timestamp,
+    totime timestamp
 ) AS $$
 BEGIN
     RETURN QUERY
@@ -163,7 +163,7 @@ BEGIN
         WHERE mc.registry_code_type IN ('TX', 'HD', 'PD')
           AND t.fromtime <= prevalence_point
           AND (t.totime >= prevalence_point OR t.totime IS NULL)
-        ORDER BY ep.pid, t.fromtime DESC, t.totime DESC NULLS FIRST
+        ORDER BY ep.pid, t.fromtime DESC, t.totime DESC NULLS LAST
     )
     SELECT at.ukrdcid,
            at.pid,
