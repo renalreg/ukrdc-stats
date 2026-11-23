@@ -491,7 +491,7 @@ def krt_prevalent(
             (base_cohort.fromtime <= prevalence_point)
             & ((base_cohort.totime > prevalence_point) | base_cohort.totime.isna())
         ]
-        .sort_values("totime", ascending=False)
+        .sort_values(["fromtime","totime"], ascending=False)
         .drop_duplicates("ukrdcid", keep="first")
     )
 
