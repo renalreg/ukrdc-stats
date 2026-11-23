@@ -494,11 +494,7 @@ def krt_prevalent(
             (base_cohort.fromtime <= prevalence_point)
             & ((base_cohort.totime > prevalence_point) | base_cohort.totime.isna())
         ]
-<<<<<<< HEAD
         .sort_values(["fromtime", "totime"], ascending=False)
-=======
-        .sort_values(["fromtime","totime"], ascending=False)
->>>>>>> 19b005f (changed the ordering of deduplication on prevalent treatments and added row level comparison script)
         .drop_duplicates("ukrdcid", keep="first")
     )
 
