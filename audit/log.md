@@ -29,7 +29,7 @@ TODO: create a unique id to attach to report runs and output all the input param
 - **Server**: ukrdc_live
 
 ### Findings
-- We are systematically over counting CKD across all live units in the latest run. There are significant differences. 
+- Comparison of aggregate numbers between run shows new CKD calculator is over counting
 
 ### Actions
 WM to:
