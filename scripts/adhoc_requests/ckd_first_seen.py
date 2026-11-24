@@ -47,7 +47,6 @@ if not KEYPATH:
     )
 
 prevalence_date = dt.datetime(2024, 12, 31)
-completeness = []
 
 with get_sessionmaker(SERVER, keypath=KEYPATH)() as session:
     completeness_data = []

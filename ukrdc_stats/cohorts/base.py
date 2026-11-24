@@ -38,10 +38,10 @@ def ckd_incident(
     """Placeholder for an incident CKD cohort; not yet implemented."""
 
 
-@pa.check_output(ckd_prevalent_schema)
+@pa.check_output(ckd_prevalent_schema)  # type: ignore[arg-type]
 def ckd_prevalent(
     session: Session, centre: str, prevalence_point: dt.datetime
-) -> ckd_prevalent_schema:
+) -> pd.DataFrame:
     """Get the prevalent CKD cohort for a given facility and prevalence point.
 
     Note: Should this be more by centre?
@@ -67,7 +67,7 @@ def ckd_prevalent(
     # Calculate eGFR from the max creatinine row for each patient
     has_crea = ukrdc_base_data["max_creatinine"].notna()
     if has_crea.any():
-        ukrdc_base_data.loc[has_crea, "calc_egfr"] = ukrdc_base_data[has_crea].apply(
+        ukrdc_base_data.loc[has_crea, "calc_egfr"] = ukrdc_base_data[has_crea].apply(  # type: ignore[call-overload]
             lambda row: calculate_egfr(
                 scr=row["max_creatinine"],
                 scr_unit=row["max_creatinine_units"],
@@ -211,7 +211,7 @@ def _clean_equal_records(base_cohort: pd.DataFrame) -> pd.DataFrame:
             continue
         prev_rows = base_cohort.loc[
             (record.ukrdcid == base_cohort.ukrdcid)
-            & (record.timeline_order - 1 == base_cohort.timeline_order)
+            & (record.timeline_order - 1 == base_cohort.timeline_order)  # type: ignore[operator]
         ]
         if prev_rows.empty:
             continue
@@ -259,7 +259,7 @@ def _label_timeline(krt_incident_cohort: pd.DataFrame) -> pd.DataFrame:
     timeline_start = timeline_start.rename(columns={"fromtime": "timeline_start"})
 
     timeline_stop = (
-        krt_incident_cohort.groupby("ukrdcid", as_index=False)["totime"]
+        krt_incident_cohort.groupby("ukrdcid", as_index=False)["totime"]  # type: ignore[call-overload]
         .max()
         .rename(columns={"totime": "timeline_stop"})
     )
@@ -363,7 +363,7 @@ def _label_incident(
     return krt_new_cohort
 
 
-@pa.check_output(krt_incident_schema)
+@pa.check_output(krt_incident_schema)  # type: ignore[arg-type]
 def krt_incident(
     session: Session,
     centre: str,
@@ -373,7 +373,7 @@ def krt_incident(
     sending_extract: str = "UKRDC",
     ukrdcids: list[str] | None = None,
     on_invalid: InvalidRowPolicy = "drop",
-) -> krt_incident_schema:
+) -> pd.DataFrame:
     """Get the incident KRT cohort for a centre, its satellites and date range.
 
     Args:
@@ -450,14 +450,14 @@ def krt_incident(
     ]
 
 
-@pa.check_output(krt_prevalent_schema)
+@pa.check_output(krt_prevalent_schema)  # type: ignore[arg-type]
 def krt_prevalent(
     session: Session,
     facility: str,
     prevalence_point: dt.datetime,
     sending_extract: str = "UKRDC",
     on_invalid: InvalidRowPolicy = "drop",
-) -> krt_prevalent_schema:
+) -> pd.DataFrame:
     """Get the prevalent KRT cohort for a given facility and prevalence point.
 
     Args:

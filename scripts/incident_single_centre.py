@@ -37,10 +37,12 @@ with get_sessionmaker(SERVER, keypath=KEYPATH)() as session:
         end_date=dt.datetime(2023, 12, 31),
     )
     centre_cohort = centre_cohort[centre_cohort["centre_code"] == FACILITY]
-    aggregate_data = aggregate_data(
+    aggregated_data = aggregate_data(
         centre_cohort,
         ["centre_code", "satellite_code", "admitreasoncode"],
         ["dialtplt"],
     )
     # aggregate_data = aggregate_data(centre_cohort, ["centre_code", "satellite_code", "group1", "group2", "group3", "group4", "ckd_centre", "admitreasoncode"], ["dialtplt"])
-    aggregate_data.to_csv(f".do_not_commit/{FACILITY}_incident_{YEAR}.csv", index=False)
+    aggregated_data.to_csv(
+        f".do_not_commit/{FACILITY}_incident_{YEAR}.csv", index=False
+    )

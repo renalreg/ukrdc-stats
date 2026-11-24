@@ -16,7 +16,9 @@ from urllib.request import urlretrieve
 import pandas as pd
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.dialects.postgresql import distinct_on
+from sqlalchemy.engine import Row
 from sqlalchemy.orm import Session
+from sqlalchemy.sql.expression import Select
 from ukrdc_sqla.ukrdc import (
     Address,
     DialysisSession,
@@ -50,7 +52,7 @@ def download_ons_address_data() -> None:
     zip_path = cache_dir.parent / "ons_data.zip"
     zip_path.parent.mkdir(parents=True, exist_ok=True)
 
-    urlretrieve(ONS_ADDRESS_DATA_URL, zip_path)  # noqa: S310
+    urlretrieve(ONS_ADDRESS_DATA_URL, zip_path)
 
     with zip_path.open("rb") as f:
         header = f.read(4)
@@ -133,11 +135,12 @@ def query_results(
     Returns:
         pd.DataFrame: Result rows for the requested pids.
     """
-    results = []
+    results: list[Row] = []
 
     for i in range(0, len(pids), chunk_size):
         chunk = pids[i : i + chunk_size]
 
+        query: Select
         if mode in ("min", "max"):
             agg_func = func.min if mode == "min" else func.max
             query = (
@@ -201,7 +204,7 @@ def query_postcodes(
     Returns a dataframe with one row per pid, selecting a single address by
     addressuse preference order: H, PST, NULL, TMP.
     """
-    results = []
+    results: list[Row] = []
 
     for i in range(0, len(pids), chunk_size):
         chunk = pids[i : i + chunk_size]
@@ -258,7 +261,7 @@ def query_careplanning(
         pd.DataFrame: DataFrame of assessments for the given facilities.
     """
     # retreive all the assessments for a given set of facilities and assessment_types
-    assessments_query = (
+    assessments_query: Select = (
         select(
             XMLPatient.nationalid.label("patientid"),
             XMLPatient.organization,
@@ -354,7 +357,7 @@ def query_vascular_access(
         raise ValueError("pids and cutoff_dates must be the same length")
 
     pairs = list(zip(pids, cutoff_dates, strict=False))
-    results = []
+    results: list[Row] = []
 
     for i in range(0, len(pairs), chunk_size):
         chunk = pairs[i : i + chunk_size]
@@ -397,7 +400,7 @@ def query_first_seen(
     Modality code 101 records first contact with renal services. Queries
     are chunked to avoid connection timeouts caused by large IN clauses.
     """
-    results = []
+    results: list[Row] = []
     for i in range(0, len(pids), chunk_size):
         chunk = pids[i : i + chunk_size]
         # DISTINCT ON takes the earliest 101 treatment per pid; id breaks
@@ -441,7 +444,7 @@ def query_demog(session: Session, pids: list[str]) -> pd.DataFrame:
     caused by large IN clauses.
     """
     chunk_size = 100
-    demog_data = []
+    demog_data: list[Row] = []
     for i in range(0, len(pids), chunk_size):
         chunk = pids[i : i + chunk_size]
         query = (

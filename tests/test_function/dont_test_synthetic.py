@@ -42,9 +42,9 @@ def test_incident() -> None:
     """Run krt_incident end-to-end with the query patched to synthetic data."""
     cohort = krt_query_incident_schema.example(size=50)
     # pin columns that random sampling would otherwise filter out or fail on
-    cohort["sendingfacility"] = CENTRE
-    cohort["healthcarefacilitycode"] = CENTRE
-    cohort["registry_code_type"] = np.resize(["HD", "PD", "TX"], len(cohort))
+    cohort.sendingfacility = CENTRE
+    cohort.healthcarefacilitycode = CENTRE
+    cohort.registry_code_type = np.resize(["HD", "PD", "TX"], len(cohort))  # type: ignore[arg-type]
 
     # patch names where base looks them up, not where they are defined
     with (
@@ -57,7 +57,7 @@ def test_incident() -> None:
     ):
         # @pa.check_output validates the result against krt_incident_schema
         result = krt_incident(
-            session=None,
+            session=None,  # type: ignore[arg-type]
             centre=CENTRE,
             end_date=dt.datetime(2026, 1, 1),
             start_date=dt.datetime(2025, 1, 1),
