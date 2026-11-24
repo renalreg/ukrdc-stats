@@ -44,7 +44,7 @@ jobs:
         run: pip install poetry
 
       - name: Install Dependencies
-        run: poetry install --with test,docs
+        run: poetry install --with test,docs,demo
 
       - name: Wait for PostgreSQL to be ready
         run: until pg_isready -h localhost -p 5432; do echo "Waiting for PostgreSQL..."; sleep 1; done
