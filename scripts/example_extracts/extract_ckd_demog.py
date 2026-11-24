@@ -66,7 +66,7 @@ def main():
             for centre in CENTRES:
                 # Extract prevalent and label
                 try:
-                    ckd_prevalent_report = ckd_prevalent(session, centre, quarter_end)
+                    ckd_prevalent_report = ckd_prevalent(session, centre, quarter_end, egfr_mode="last")
                 except EmptyCohortError:
                     print(
                         f"No patients found for centre {centre} in quarter {current_quarter} {current_year}"

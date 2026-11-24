@@ -59,16 +59,15 @@ Bradford 4%, York 6%, Hull 6%, Exeter 186%, Reading 122%, Shrew 155%,Leeds 187%.
 #### HHD
 Numbers are good considering small. Derby and Reading ~25% over, Shrew and Donc ~40% under.
 
+pm: 
+- At least some of these observations are a result of something like the following pattern. A treatment record is opened but the patient is not treated or not treated for long. Subsequently the record is never closed. 
 
-
+- Have changed the way the treatments are ordered putting preference on most recent fromtime to make code more robust against this type of pattern. This may have side effects for patients that recieve small amounts of hd shortly after transplantation but whose modality should properly be recorded as TX. 
 
 ### Actions
 SS to:
 - compare against checks done for previous releases
 - investigate individual level data for problematic centres.
-
-PM : 
-- Have changed the way the treatments are ordered putting preference on most recent from time. This seems to help since as we discovered before there a many short term treatments which are opened but never closed 
 
 TODO:
 - Run audit using the prevalence_self_audit and prevalent_compare_row level 
