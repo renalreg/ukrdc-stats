@@ -41,7 +41,16 @@ Bradford 4%, York 6%, Hull 6%, Exeter 186%, Reading 122%, Shrew 155%,Leeds 187%.
 Numbers are good considering small. Derby and Reading ~25% over, Shrew and Donc ~40% under.
 
 
+
+
 ### Actions
 SS to:
 - compare against checks done for previous releases
 - investigate individual level data for problematic centres.
+
+PM : 
+- Have changed the way the treatments are ordered putting preference on most recent from time. This seems to help since as we discovered before there a many short term treatments which are opened but never closed 
+
+TODO:
+- Run audit using the prevalence_self_audit and prevalent_compare_row level 
+- Review the logic of the centre, satellite mapping and filtering
