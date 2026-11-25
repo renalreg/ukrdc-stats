@@ -92,7 +92,7 @@ def query_ons_postcode_data() -> pd.DataFrame:
         csv_path,
         usecols=["pcd7", "imd20ind"],
         dtype={"pcd7": "string", "imd20ind": "int"},
-        low_memory=False,
+        low_memory=True,
     ).drop_duplicates()
 
     imd_data["imddecile"] = pd.cut(
