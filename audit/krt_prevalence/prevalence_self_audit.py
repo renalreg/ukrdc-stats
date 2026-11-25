@@ -175,7 +175,8 @@ def main() -> None:
     )
 
     mismatches = compared.loc[
-        ~compared[FLAGS].all(axis=1) & (compared["match_category"] != MATCH_CATEGORIES[1]),
+        ~compared[FLAGS].all(axis=1)
+        & (compared["match_category"] != MATCH_CATEGORIES[1]),
         MISMATCH_COLUMNS,
     ].fillna({"modality_py": MISSING, "modality_sql": MISSING})
     OUTPUT_DIR.mkdir(exist_ok=True)
