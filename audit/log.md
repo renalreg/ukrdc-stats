@@ -30,13 +30,14 @@ TODO: create a unique id to attach to report runs and output all the input param
 
 ### Findings
 - Comparison of aggregate numbers between run shows new CKD calculator is over counting
+- Some centres (BHLY and RAJ) are not outputing the full range of ckd code and defaulting to fallback 900 code
 
 ### Actions
 WM to:
 - Run unaggregated CKD file and look at GFR values in the latest output. Are these consistent with >15 as we would expect?
 PM to:
-- Check possible reasons for discrepancies in the calculators. 
-  
+- Check possible reasons for discrepancies in the calculators.
+
 ## 19-11-26
 
 **Audit**: `krt_prevalent` vs annual report 2024
@@ -59,17 +60,16 @@ Bradford 4%, York 6%, Hull 6%, Exeter 186%, Reading 122%, Shrew 155%,Leeds 187%.
 #### HHD
 Numbers are good considering small. Derby and Reading ~25% over, Shrew and Donc ~40% under.
 
+pm:
+- At least some of these observations are a result of something like the following pattern. A treatment record is opened but the patient is not treated or not treated for long. Subsequently the record is never closed.
 
-
+- Have changed the way the treatments are ordered putting preference on most recent fromtime to make code more robust against this type of pattern. This may have side effects for patients that recieve small amounts of hd shortly after transplantation but whose modality should properly be recorded as TX.
 
 ### Actions
 SS to:
 - compare against checks done for previous releases
 - investigate individual level data for problematic centres.
 
-PM : 
-- Have changed the way the treatments are ordered putting preference on most recent from time. This seems to help since as we discovered before there a many short term treatments which are opened but never closed 
-
 TODO:
-- Run audit using the prevalence_self_audit and prevalent_compare_row level 
+- Run audit using the prevalence_self_audit and prevalent_compare_row level
 - Review the logic of the centre, satellite mapping and filtering

@@ -22,6 +22,7 @@ from ukrdc_stats.cohorts.schema import (
     krt_prevalent_schema,
 )
 from ukrdc_stats.exceptions import MissingColumnError
+from ukrdc_stats.labellers.biomarkers import egfr as label_egfr
 from ukrdc_stats.labellers.demographics import age
 from ukrdc_stats.labellers.geography import adult_paed, main_satellite_centres
 from ukrdc_stats.utils.data import GENDER_GROUP_MAP
@@ -40,7 +41,10 @@ def ckd_incident(
 
 @pa.check_output(ckd_prevalent_schema)
 def ckd_prevalent(
-    session: Session, centre: str, prevalence_point: dt.datetime
+    session: Session,
+    centre: str,
+    prevalence_point: dt.datetime,
+    egfr_mode: str = "last",
 ) -> ckd_prevalent_schema:
     """Get the prevalent CKD cohort for a given facility and prevalence point.
 
@@ -50,6 +54,8 @@ def ckd_prevalent(
         session (Session): UKRDC session
         centre (str): Renal centre code
         prevalence_point (dt.datetime): Prevalence point
+        egfr_mode (str, optional): "min" uses the lowest eGFR on record,
+            "last" uses the most recent. Defaults to "min".
     """
     # Get base data
     ukrdc_base_data = query_ckd(session, centre, prevalence_point)
@@ -81,9 +87,16 @@ def ckd_prevalent(
         ukrdc_base_data["calc_egfr"] = None
 
     # Take the minimum of lab eGFR and calculated eGFR
-    ukrdc_base_data["egfr_min"] = ukrdc_base_data[["lab_egfr_min", "calc_egfr"]].min(
-        axis=1
-    )
+    if egfr_mode == "last":
+        # Most recent lab or calculated eGFR; replaces the SQL minimum above
+        ukrdc_base_data = label_egfr(
+            session, ukrdc_base_data, prevalence_point, mode="last"
+        )
+        ukrdc_base_data["egfr_min"] = ukrdc_base_data["egfr_last"]
+    else:
+        ukrdc_base_data["egfr_min"] = ukrdc_base_data[
+            ["lab_egfr_min", "calc_egfr"]
+        ].min(axis=1)
 
     # Error handling for low completeness egfr
     if ukrdc_base_data["egfr_min"].sum() / ukrdc_base_data.shape[0] < 0.1:

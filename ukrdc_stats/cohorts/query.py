@@ -582,13 +582,13 @@ def query_ckd_ukrdc(
 
 @pa.check_output(ckd_treatment_archive_base_schema)
 def query_ckd_treatment_archive(
-    archive_session: Session, facility: str, prevalence_point: dt.datetime
+    archive_session: Session, facilities: list[str], prevalence_point: dt.datetime
 ) -> ckd_treatment_archive_base_schema:
     """V5 corrections for ckd treatments in the archive.
 
     Args:
         archive_session (Session): XML archive database session.
-        facility (str): Renal centre code.
+        facilities (list[str]): Sending facilities present in the cohort.
         prevalence_point (dt.datetime): Point the cohort is calculated at.
 
     Returns:
@@ -612,7 +612,7 @@ def query_ckd_treatment_archive(
             XMLTreatment.patientid == XMLPatient.id,
         )
         .where(
-            XMLPatient.sendingfacility == facility,
+            XMLPatient.sendingfacility.in_(facilities),
             XMLTreatment.admitreasoncode.in_(ckd_not_rrt_codes),
             XMLTreatment.fromtime < prevalence_point,
             or_(
@@ -643,19 +643,24 @@ def query_ckd(
     # query the data in the ukrdc database
     ckd_ukrdc = query_ckd_ukrdc(session, facility_code, prevalence_point)
 
+    # send every sendingfacility present in the cohort to the archive. pid is
+    # only unique per (nationalid, sendingfacility) so archive rows must map
+    # back to the pid of the same sender
+    senders = ckd_ukrdc["sendingfacility"].unique().tolist()
+
     # query the data in the archive database and map to ukrdc identifiers
     with get_archive_sessionmaker(session)() as archive_session:
         ckd_archive = query_ckd_treatment_archive(
-            archive_session, facility_code, prevalence_point
+            archive_session, senders, prevalence_point
         )
 
     if ckd_archive.empty:
         return ckd_ukrdc
 
-    pid_ni_map_df = pid_ni_map(session, ckd_archive.sendingfacility.unique().tolist())
+    pid_ni_map_df = pid_ni_map(session, senders)
     ckd_archive_mapped = ckd_archive.merge(
         pid_ni_map_df,
-        on=("patientid", "organization"),
+        on=("patientid", "organization", "sendingfacility"),
         how="inner",
         suffixes=("", "_mapped"),
     )

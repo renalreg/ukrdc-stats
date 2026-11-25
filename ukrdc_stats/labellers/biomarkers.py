@@ -46,20 +46,22 @@ def egfr(
     # Lab eGFR codes: aggregate to min per pid in SQL to avoid fetching
     # thousands of raw rows. QBLA1 (creatinine) needs raw rows for per-row
     # eGFR calculation.
+    # Aggregates drop observation dates, so "last" needs every raw row
     lab_egfr_codes = ["QBLAB", "QBLAL", "QBLAP"]
+    row_mode = "raw" if mode == "last" else None
     lab_egfr_data = query_results(
         session=session,
         pids=patient_cohort["pid"].tolist(),
         test_codes=lab_egfr_codes,
         to_time=prevalence_point,
-        mode="min",
+        mode=row_mode or "min",
     )
     creatinine_data = query_results(
         session=session,
         pids=patient_cohort["pid"].tolist(),
         test_codes=["QBLA1"],
         to_time=prevalence_point,
-        mode="max",
+        mode=row_mode or "max",
     )
     egfr_data = pd.concat([lab_egfr_data, creatinine_data], ignore_index=True)
 

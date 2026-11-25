@@ -13,8 +13,10 @@ from ukrdc_stats.exceptions import EmptyCohortError
 def pid_ni_map(session: Session, centres: list[str]) -> pd.DataFrame:
     """Map patient ids to national ids for a given facility.
 
-    TODO: think through the ambiguities resulting from multiple pids
-    mapping to the same ni.
+    Warning: the reverse mapping (ni -> pid) is only valid when combined
+    with sendingfacility. A nationalid maps to one pid per sending
+    facility, so any merge back onto pids must include sendingfacility in
+    its key or rows will fan out across senders.
     """
     # append depricated
     depricated_centres = session.execute(
