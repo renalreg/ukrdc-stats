@@ -41,7 +41,10 @@ def ckd_incident(
 
 @pa.check_output(ckd_prevalent_schema)
 def ckd_prevalent(
-    session: Session, centre: str, prevalence_point: dt.datetime, egfr_mode: str = "min"
+    session: Session,
+    centre: str,
+    prevalence_point: dt.datetime,
+    egfr_mode: str = "last",
 ) -> ckd_prevalent_schema:
     """Get the prevalent CKD cohort for a given facility and prevalence point.
 

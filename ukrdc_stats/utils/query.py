@@ -18,7 +18,6 @@ def pid_ni_map(session: Session, centres: list[str]) -> pd.DataFrame:
     facility, so any merge back onto pids must include sendingfacility in
     its key or rows will fan out across senders.
     """
-    
     # append depricated
     depricated_centres = session.execute(
         select(FacilityRelationship.parentfacilitycode).where(

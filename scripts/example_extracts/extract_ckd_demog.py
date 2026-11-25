@@ -29,22 +29,22 @@ OUTPUT_FILE: Path = Path(f"ckd_demog_{SERVER}_{YEAR_START}.csv")
 CENTRES = [
     # live
     "RAJ",  # MSE
-    #"RAQ01",  # Lister
-    #"RCSLB",  # Nottingham
-    #"RH8",  # RD&E
-    #"RHW01",  # Reading
-    #"RK7CC",  # Sheffield
-    #"RL403",  # Wolverhampton
-    #"RNJ00",  # Barts
-    #"RFPFG",  # Derby
-    #"RBD01",  # Dorset
-    #"RLZ01",  # Shrewsbury
-    #"RP5",  # Doncaster
-    #"99RQR13",
-    #"RAE05",
-    #"RCB55",
-    #"RF201",
-    #"RQR13",
+    # "RAQ01",  # Lister
+    # "RCSLB",  # Nottingham
+    # "RH8",  # RD&E
+    # "RHW01",  # Reading
+    # "RK7CC",  # Sheffield
+    # "RL403",  # Wolverhampton
+    # "RNJ00",  # Barts
+    # "RFPFG",  # Derby
+    # "RBD01",  # Dorset
+    # "RLZ01",  # Shrewsbury
+    # "RP5",  # Doncaster
+    # "99RQR13",
+    # "RAE05",
+    # "RCB55",
+    # "RF201",
+    # "RQR13",
 ]
 
 
