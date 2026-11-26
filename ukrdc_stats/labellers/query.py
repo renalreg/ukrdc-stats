@@ -92,7 +92,7 @@ def query_ons_postcode_data() -> pd.DataFrame:
         csv_path,
         usecols=["pcd7", "imd20ind"],
         dtype={"pcd7": "string", "imd20ind": "int"},
-        low_memory=False,
+        low_memory=True,
     ).drop_duplicates()
 
     imd_data["imddecile"] = pd.cut(
@@ -128,7 +128,8 @@ def query_results(
         to_time (dt.datetime | None): Latest observationtime to include.
         mode: "raw" returns all rows. "min" or "max" aggregates to one
               row per pid per serviceidcode using MIN/MAX(resultvalue),
-              reducing data transfer for large result sets.
+              reducing data transfer for large result sets. "last" returns
+              the most recent row per pid per serviceidcode via DISTINCT ON.
 
     Returns:
         pd.DataFrame: Result rows for the requested pids.
@@ -138,7 +139,28 @@ def query_results(
     for i in range(0, len(pids), chunk_size):
         chunk = pids[i : i + chunk_size]
 
-        if mode in ("min", "max"):
+        if mode == "last":
+            # one row per pid per serviceidcode: the most recent result.
+            # DISTINCT ON requires the order_by to lead with its expressions
+            query = (
+                select(
+                    LabOrder.pid,
+                    ResultItem.observationtime,
+                    ResultItem.serviceidcode,
+                    ResultItem.resultvalue,
+                    ResultItem.resultvalueunits,
+                )
+                .join(ResultItem, ResultItem.orderid == LabOrder.id)
+                .where(LabOrder.pid.in_(chunk))
+                .ext(distinct_on(LabOrder.pid, ResultItem.serviceidcode))
+                .order_by(
+                    LabOrder.pid,
+                    ResultItem.serviceidcode,
+                    ResultItem.observationtime.desc(),
+                    ResultItem.id,
+                )
+            )
+        elif mode in ("min", "max"):
             agg_func = func.min if mode == "min" else func.max
             query = (
                 select(

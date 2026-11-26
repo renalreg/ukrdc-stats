@@ -46,9 +46,10 @@ def egfr(
     # Lab eGFR codes: aggregate to min per pid in SQL to avoid fetching
     # thousands of raw rows. QBLA1 (creatinine) needs raw rows for per-row
     # eGFR calculation.
-    # Aggregates drop observation dates, so "last" needs every raw row
+    # "last" only needs the most recent result per pid per code, fetched
+    # with DISTINCT ON in SQL
     lab_egfr_codes = ["QBLAB", "QBLAL", "QBLAP"]
-    row_mode = "raw" if mode == "last" else None
+    row_mode = "last" if mode == "last" else None
     lab_egfr_data = query_results(
         session=session,
         pids=patient_cohort["pid"].tolist(),
