@@ -1,9 +1,8 @@
-"""
-Experimental script which aims to test the concept of using local ai to do 
+"""Experimental script which aims to test the concept of using local ai to do
 qualatative testing on row level data with a local llama.cpp
 
 This should definitely NOT be pointed at a cloud provider under any
-circumstances. 
+circumstances.
 """
 
 import json
@@ -111,7 +110,7 @@ def query_transplants(ukrdcid: str, session: Session) -> pd.DataFrame:
 
 
 PROMPT = """
-You are a renal data quality analyst for the UKKA prevalent KRT dataset.
+You are a renal data quality and clinical analyst for the UKKA prevalent KRT dataset.
 Prevalence point: {prevalence_point}.
 
 A UKRDC-derived cohort has flagged this patient:
@@ -144,7 +143,12 @@ DATA_QUALITY_CHECKS = (
     "extracts; admit reason codes with no ModalityCodes match (blank registry_code_type); missing health care "
     "facility, admission source, or discharge reason and location; treatments with no end date that are older "
     "than the most recent dialysis session; transplants with no procedure time; and dialysis sessions that stop "
-    "well before the prevalence point, suggesting a stale feed."
+    "well before the prevalence point, suggesting a stale feed; "
+    "transfers in or out of a centre without a UKRDC feed; "
+    "whether the time horizon at the prevalence point makes the dialysis episode chronic (included) "
+    "rather than acute (excluded); "
+    "whether dialysis sessions and transplant procedures validate the treatment coding, "
+    "and whether the coded modality is supported by those sessions and procedures."
 )
 
 CATEGORY_FOCUS = {
@@ -153,7 +157,7 @@ CATEGORY_FOCUS = {
         "Consider: treatment ended or stopped before the prevalence point; death before the prevalence point; "
         "treatment started after the prevalence point; a short gap that split the episode; conservative care or "
         "CKD only rather than KRT; a transplant that failed or is not reported as active; "
-        "a missing or unmatched NHS number preventing linkage."
+        # "a missing or unmatched NHS number preventing linkage."
         + DATA_QUALITY_CHECKS
     ),
     "ukrr_centre_mismatch": (
