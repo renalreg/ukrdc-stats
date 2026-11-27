@@ -99,6 +99,9 @@ reportMissingParameterType = "none"
 target-version = "py312"
 extend-exclude = ["demo", "__marimo__"]
 
+[tool.ruff.format]
+line-ending = "lf"
+
 [tool.ruff.lint]
 select = [
     "E",   # pycodestyle errors

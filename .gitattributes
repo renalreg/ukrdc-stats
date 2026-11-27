@@ -1,0 +1,15 @@
+# Normalise all text files to LF in the repo and working tree
+* text=auto eol=lf
+
+# Binary formats that must never be line-ending converted
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.xlsx binary
+*.xls binary
+*.parquet binary
+*.zip binary
+*.pdf binary
+*.whl binary
