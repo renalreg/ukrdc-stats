@@ -68,13 +68,17 @@ class WindowsFileLock:
         return os.open(self.filename, os.O_CREAT | os.O_RDWR)
 
     def acquire_read_lock(self, wait: bool) -> bool:
-        """Take a shared (read) lock.
+        """Take a read lock.
+
+        Windows has no shared-lock implementation in portalocker's stdlib
+        backend, so reads use an exclusive lock. The critical sections are
+        small enough that the lost read parallelism does not matter here.
 
         Returns False instead of blocking when wait=False.
         """
         if self._filedesc is None:
             self._filedesc = self._open_lockfile()
-        flag = portalocker.LOCK_SH | (0 if wait else portalocker.LOCK_NB)
+        flag = portalocker.LOCK_EX | (0 if wait else portalocker.LOCK_NB)
         try:
             portalocker.lock(self._filedesc, flag)
         except portalocker.LockException:
@@ -158,7 +162,10 @@ def _get_cache_region(config: dict[str, Any]) -> Any:
     backend = config.get("backend", "memory")
 
     if backend == "memory":
-        _cache_region = make_region().configure("dogpile.cache.memory")
+        _cache_region = make_region().configure(
+            "dogpile.cache.memory",
+            expiration_time=config.get("expiration", 3600),
+        )
     elif backend == "file":
         cache_dir = config["cache_dir"]
         cache_dir.mkdir(parents=True, exist_ok=True)
