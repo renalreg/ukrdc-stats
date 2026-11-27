@@ -14,6 +14,7 @@ from typing import Literal
 
 import pandas as pd
 import pandera.pandas as pa
+from pandera.typing import DataFrame
 from sqlalchemy import and_, case, exists, func, or_, select
 from sqlalchemy.orm import Session, aliased
 from ukrdc_sqla.ukrdc import (
@@ -38,7 +39,6 @@ from ukrdc_stats.cohorts.schema import (
     ckd_treatment_archive_base_schema,
     ckd_ukrdc_base_schema,
     demog_base_schema,
-    krt_base_schema,
     krt_query_incident_schema,
     krt_query_prevalent_schema,
     reversed_treatment_mask,
@@ -95,7 +95,7 @@ def query_krt_prevalent(
     recovery_window: dt.timedelta = dt.timedelta(days=90),
     sending_extract: str = "UKRDC",
     on_invalid: InvalidRowPolicy = "drop",
-) -> krt_query_prevalent_schema:
+) -> DataFrame[krt_query_prevalent_schema]:
     """Core query with the ukrdc data needed for a prevalent KRT cohort.
 
     Args:
@@ -179,7 +179,7 @@ def query_krt_incident(
     sending_extract: str = "UKRDC",
     ukrdcids: list[str] | None = None,
     on_invalid: InvalidRowPolicy = "drop",
-) -> krt_base_schema:
+) -> DataFrame[krt_query_incident_schema]:
     """Core query with the ukrdc data needed for an incident KRT cohort.
 
     Args:
@@ -360,7 +360,9 @@ def query_krt_incident(
 
 
 @pa.check_output(demog_base_schema)
-def facility_demographics(session: Session, facility_code: str) -> krt_base_schema:
+def facility_demographics(
+    session: Session, facility_code: str
+) -> DataFrame[demog_base_schema]:
     """Core query to extract demographic information.
 
     Args:
@@ -368,7 +370,7 @@ def facility_demographics(session: Session, facility_code: str) -> krt_base_sche
         facility_code (str): _description_
 
     Returns:
-        krt_base_schema: _description_
+        DataFrame[demog_base_schema]: _description_
     """
     query = (
         select(
@@ -399,7 +401,7 @@ def query_ckd_ukrdc(
     centre: str,
     prevalence_point: dt.datetime,
     extract_all: bool = False,
-) -> ckd_ukrdc_base_schema:
+) -> DataFrame[ckd_ukrdc_base_schema]:
     """Query the ukrdc for the raw prevalent CKD cohort.
 
     Args:
@@ -583,7 +585,7 @@ def query_ckd_ukrdc(
 @pa.check_output(ckd_treatment_archive_base_schema)
 def query_ckd_treatment_archive(
     archive_session: Session, facilities: list[str], prevalence_point: dt.datetime
-) -> ckd_treatment_archive_base_schema:
+) -> DataFrame[ckd_treatment_archive_base_schema]:
     """V5 corrections for ckd treatments in the archive.
 
     Args:
@@ -634,7 +636,7 @@ def query_ckd_treatment_archive(
 @pa.check_output(ckd_ukrdc_base_schema)
 def query_ckd(
     session: Session, facility_code: str, prevalence_point: dt.datetime
-) -> ckd_ukrdc_base_schema:
+) -> DataFrame[ckd_ukrdc_base_schema]:
     """Return the base query which forms the basis of the ckd cohort.
 
     Includes data from the ukrdc with corrections from the removed
