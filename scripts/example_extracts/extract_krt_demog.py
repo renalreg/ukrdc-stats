@@ -46,7 +46,7 @@ CENTRES = ["RFBAK"]
 
 
 def main():
-    with get_sessionmaker(SERVER, keypath=KEYPATH, caching=True)() as session:
+    with get_sessionmaker(SERVER, keypath=KEYPATH)() as session:
         # region_map = map_codes("RR1+", "URTS_region", session)
         # facility_names = lookup_codes("RR1+", "description", session)
         quarterly_reports = []
