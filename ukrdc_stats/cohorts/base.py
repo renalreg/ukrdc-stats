@@ -8,6 +8,7 @@ import datetime as dt
 
 import pandas as pd
 import pandera.pandas as pa
+from pandera.typing import DataFrame
 from sqlalchemy.orm import Session
 
 from ukrdc_stats.cohorts.query import (
@@ -45,7 +46,7 @@ def ckd_prevalent(
     centre: str,
     prevalence_point: dt.datetime,
     egfr_mode: str = "last",
-) -> ckd_prevalent_schema:
+) -> DataFrame[ckd_prevalent_schema]:
     """Get the prevalent CKD cohort for a given facility and prevalence point.
 
     Note: Should this be more by centre?
@@ -386,7 +387,7 @@ def krt_incident(
     sending_extract: str = "UKRDC",
     ukrdcids: list[str] | None = None,
     on_invalid: InvalidRowPolicy = "drop",
-) -> krt_incident_schema:
+) -> DataFrame[krt_incident_schema]:
     """Get the incident KRT cohort for a centre, its satellites and date range.
 
     Args:
@@ -470,7 +471,7 @@ def krt_prevalent(
     prevalence_point: dt.datetime,
     sending_extract: str = "UKRDC",
     on_invalid: InvalidRowPolicy = "drop",
-) -> krt_prevalent_schema:
+) -> DataFrame[krt_prevalent_schema]:
     """Get the prevalent KRT cohort for a given facility and prevalence point.
 
     Args:

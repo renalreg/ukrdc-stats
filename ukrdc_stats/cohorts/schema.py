@@ -43,9 +43,9 @@ class krt_base_schema(pa.DataFrameModel):
     registry_code_type: Series[str]
     qbl05: Series[str] = pa.Field(nullable=True)
     hdp04: Series[str] = pa.Field(nullable=True)
-    deathtime: Series[pa.DateTime] = pa.Field(nullable=True)
-    fromtime: Series[pa.DateTime]
-    totime: Series[pa.DateTime] = pa.Field(nullable=True)
+    deathtime: Series[pd.Timestamp] = pa.Field(nullable=True)
+    fromtime: Series[pd.Timestamp]
+    totime: Series[pd.Timestamp] = pa.Field(nullable=True)
 
     @pa.dataframe_check(raise_warning=True)
     def fromtime_before_totime(cls, df: pd.DataFrame) -> Series[bool]:
@@ -88,7 +88,7 @@ class krt_incident_schema(krt_query_incident_schema):
     centre_code: Series[str]
     satellite_code: Series[str]
     dialtplt: Series[str] = pa.Field(nullable=True, isin=["HD", "HHD", "PD", "TX"])
-    timeline_start: Series[pa.DateTime]
+    timeline_start: Series[pd.Timestamp]
     incident: Series[bool]
 
     class Config:
@@ -117,8 +117,8 @@ class demog_base_schema(pa.DataFrameModel):
     sendingfacility: Series[str]
     gender: Series[str] = pa.Field(nullable=True)
     ethnic_group: Series[str] = pa.Field(nullable=True)
-    birth_time: Series[pa.DateTime] = pa.Field(nullable=True)
-    deathtime: Series[pa.DateTime] = pa.Field(nullable=True)
+    birth_time: Series[pd.Timestamp] = pa.Field(nullable=True)
+    deathtime: Series[pd.Timestamp] = pa.Field(nullable=True)
 
     class Config:
         """Pandera model configuration."""
@@ -133,15 +133,15 @@ class ckd_ukrdc_base_schema(pa.DataFrameModel):
     ukrdcid: Series[str]
     sendingfacility: Series[str]
     sendingextract: Series[str]
-    birthtime: Series[pa.DateTime]
-    deathtime: Series[pa.DateTime] = pa.Field(nullable=True)
+    birthtime: Series[pd.Timestamp]
+    deathtime: Series[pd.Timestamp] = pa.Field(nullable=True)
     healthcarefacilitycode: Series[str]
     healthcarefacilitydesc: Series[str] = pa.Field(nullable=True)
     admitreasoncode: Series[str]
     admitreasoncodestd: Series[str]
     admitreasondesc: Series[str] = pa.Field(nullable=True)
-    fromtime: Series[pa.DateTime]
-    totime: Series[pa.DateTime] = pa.Field(nullable=True)
+    fromtime: Series[pd.Timestamp]
+    totime: Series[pd.Timestamp] = pa.Field(nullable=True)
     sex: Series[str]
     ethnicgroupcode: Series[str] = pa.Field(nullable=True)
     ethnicgroupdesc: Series[str] = pa.Field(nullable=True)
@@ -150,7 +150,7 @@ class ckd_ukrdc_base_schema(pa.DataFrameModel):
     lab_egfr_min: Series[str] = pa.Field(nullable=True)
     max_creatinine: Series[str] = pa.Field(nullable=True)
     max_creatinine_units: Series[str] = pa.Field(nullable=True)
-    max_creatinine_date: Series[pa.DateTime] = pa.Field(nullable=True)
+    max_creatinine_date: Series[pd.Timestamp] = pa.Field(nullable=True)
 
     class Config:
         """Pandera model configuration."""
@@ -185,8 +185,8 @@ class ckd_treatment_archive_base_schema(pa.DataFrameModel):
     admitreasoncode: Series[str]
     admitreasoncodestd: Series[str]
     admitreasondesc: Series[str] = pa.Field(nullable=True)
-    fromtime: Series[pa.DateTime]
-    totime: Series[pa.DateTime] = pa.Field(nullable=True)
+    fromtime: Series[pd.Timestamp]
+    totime: Series[pd.Timestamp] = pa.Field(nullable=True)
 
     class Config:
         """Pandera model configuration."""
