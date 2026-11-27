@@ -7,6 +7,7 @@ breakdowns of the prevalent CKD cohort.
 """
 
 import datetime as dt
+from typing import cast
 
 import pandas as pd
 from sqlalchemy.orm import Session
@@ -69,12 +70,19 @@ class PrevalentCKDCalculator:
             )
 
         cohort = prevalent_careplanning(
-            self.session, cohort, self.prevalence_point, "TPLTassess"
+            self.session, cohort, self.prevalence_point, ["TPLTassess"]
         )
 
         cohort["ethnicity"] = cohort["ukkaethnicity"].fillna("Missing")
 
         self._patient_cohort = cohort
+
+    @property
+    def patient_cohort(self) -> pd.DataFrame:
+        """Patient cohort, extracted lazily on first access."""
+        if self._patient_cohort is None:
+            self.extract_patient_cohort()
+        return cast(pd.DataFrame, self._patient_cohort)
 
     @property
     def aggregated(self) -> pd.DataFrame:
@@ -83,17 +91,15 @@ class PrevalentCKDCalculator:
         Calculated once and reused by all the stats builders.
         """
         if self._aggregated is None:
-            if self._patient_cohort is None:
-                self.extract_patient_cohort()
             self._aggregated = aggregate_data(
-                cohort_wide=self._patient_cohort,
+                cohort_wide=self.patient_cohort,
                 column_attributes=COLUMN_ATTRIBUTES,
                 row_attributes=ROW_ATTRIBUTES,
             )
         return self._aggregated
 
     def _population(self, unit: str = "all") -> int:
-        cohort = self._patient_cohort
+        cohort = self.patient_cohort
         if unit != "all":
             cohort = cohort[cohort["satellite_code"] == unit]
         return cohort["ukrdcid"].nunique()

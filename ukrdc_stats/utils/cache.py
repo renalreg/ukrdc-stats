@@ -24,7 +24,7 @@ Known limitation (read before using with ORM entities):
 import hashlib
 import json
 import os
-from collections.abc import Iterator, Sequence
+from collections.abc import Generator, Iterator, Sequence
 from contextlib import AbstractContextManager, contextmanager
 from pathlib import Path
 from typing import Any
@@ -119,7 +119,7 @@ class WindowsFileLock:
         """Context manager holding a shared lock for the duration of the block."""
 
         @contextmanager
-        def _read_ctx() -> Iterator["WindowsFileLock"]:
+        def _read_ctx() -> Generator["WindowsFileLock", None, None]:
             self.acquire_read_lock(wait=True)
             try:
                 yield self
@@ -132,7 +132,7 @@ class WindowsFileLock:
         """Context manager holding an exclusive lock for the duration of the block."""
 
         @contextmanager
-        def _write_ctx() -> Iterator["WindowsFileLock"]:
+        def _write_ctx() -> Generator["WindowsFileLock", None, None]:
             self.acquire_write_lock(wait=True)
             try:
                 yield self

@@ -385,7 +385,7 @@ def facility_demographics(
         .join(PatientRecord, Patient.pid == PatientRecord.pid)
         .outerjoin(CodeMap, CodeMap.source_code == Patient.ethnic_group_code)
         .where(
-            PatientRecord.facility == facility_code,
+            PatientRecord.sendingfacility == facility_code,
             CodeMap.source_coding_standard == "NHS_DATA_DICTIONARY",
             CodeMap.destination_coding_standard == "URTS_ETHNIC_GROUPING",
         )

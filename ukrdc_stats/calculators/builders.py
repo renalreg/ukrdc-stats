@@ -19,7 +19,7 @@ def build_labelled2d(
     title: str,
     summary: str,
     description: str,
-    filters: dict | None = None,
+    filters: dict[str, str] | None = None,
 ) -> Labelled2d:
     """Pivot one attribute of an aggregated long dataframe into a Labelled2d.
 
